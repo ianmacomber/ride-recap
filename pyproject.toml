@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ride-recap"
+version = "0.1.0"
+description = "Turn raw GoPro cycling footage and Garmin FIT telemetry into highlight reels with burned-in data overlays"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Ian Macomber" }]
+keywords = ["cycling", "gopro", "garmin", "fit", "video", "ffmpeg", "gemini", "strava"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+]
+dependencies = [
+    "fitparse>=1.2.0",
+    "Pillow>=10.0.0",
+    "numpy>=1.26.0",
+    "click>=8.1.0",
+    "pydantic-settings>=2.0",
+    "google-genai>=1.0",
+    "garminconnect>=0.3.0",
+    "flask>=3.0",
+    "streamlit>=1.35.0",
+    "requests>=2.31",
+]
+
+[project.urls]
+Homepage = "https://github.com/ianmacomber/ride-recap"
+Issues = "https://github.com/ianmacomber/ride-recap/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.4.0",
+]
+
+[project.scripts]
+# Both names run the same CLI. `gopro-garmin` is the original and is what the
+# docs and figures use; `ride-recap` matches the project name.
+gopro-garmin = "gopro_garmin_pipeline.cli:main"
+ride-recap = "gopro_garmin_pipeline.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+gopro_garmin_pipeline = ["design/tokens.json", "components/ride_scrubber/index.html"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

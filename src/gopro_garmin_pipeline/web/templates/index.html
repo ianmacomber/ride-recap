@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ride Review</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body data-mode="{{ mode }}">
+    <div class="app-shell">
+        <div class="video-area">
+            <div class="player-stack">
+                <video id="player" src="/video/{{ filename }}" controls></video>
+                <canvas id="overlay"></canvas>
+                <div id="hud-map"></div>
+                <div id="distance-badge">
+                    <span id="dist-current">--</span>
+                    <span id="dist-sep"> / </span>
+                    <span id="dist-total">--</span>
+                    <span id="dist-unit">mi</span>
+                </div>
+            </div>
+            {% if mode == "ride" %}
+            <div class="clip-ribbon" id="clip-ribbon" title="Click to seek; drag handles on selected moment to set in/out/anchor">
+                <div class="clip-ribbon-track" id="clip-ribbon-track">
+                    <div class="clip-ribbon-playhead" id="clip-ribbon-playhead"></div>
+                </div>
+                <div class="clip-ribbon-hint">
+                    <span class="kbd">a</span>=approve <span class="kbd">r</span>=reject <span class="kbd">[</span>=in <span class="kbd">]</span>=out <span class="kbd">c</span>=anchor <span class="kbd">n</span>=new <span class="kbd">j</span>/<span class="kbd">k</span>=prev/next
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% if mode == "ride" %}
+        <aside class="review-sidebar" id="review-sidebar">
+            <header class="sidebar-header">
+                <div class="sidebar-title">Ride Review</div>
+                <div class="sidebar-controls">
+                    <select id="clip-selector" class="clip-selector"></select>
+                </div>
+                <div class="ride-strip" id="ride-strip" title="Whole ride. Click to switch clip + seek.">
+                    <div class="ride-strip-track" id="ride-strip-track">
+                        <div class="ride-strip-playhead" id="ride-strip-playhead"></div>
+                    </div>
+                </div>
+                <div class="sidebar-actions">
+                    <button id="add-at-playhead" class="btn btn-secondary" title="Add a manual moment at the current playhead position (n)">+ Add at playhead</button>
+                    <button id="save-selections" class="btn btn-primary">Save & Compose</button>
+                </div>
+                <div class="sidebar-summary" id="sidebar-summary">--</div>
+                <div class="sidebar-filter">
+                    <label><input type="radio" name="filter" value="all" checked> All</label>
+                    <label><input type="radio" name="filter" value="approved"> Approved</label>
+                    <label><input type="radio" name="filter" value="pending"> Pending</label>
+                </div>
+            </header>
+            <ol class="moments-list" id="moments-list"></ol>
+        </aside>
+        {% endif %}
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/static/app.js"></script>
+    {% if mode == "ride" %}
+    <script src="/static/review.js"></script>
+    {% endif %}
+</body>
+</html>

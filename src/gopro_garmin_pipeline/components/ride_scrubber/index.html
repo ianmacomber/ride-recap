@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: transparent; overflow: hidden; }
+  #root { padding: 4px 12px 0; user-select: none; -webkit-user-select: none; }
+
+  #track {
+    position: relative; height: 24px; background: #1a1a2e;
+    border-radius: 6px; cursor: pointer; margin-bottom: 24px; touch-action: none;
+  }
+  #fill {
+    position: absolute; top: 0; left: 0; height: 100%;
+    background: rgba(255,107,53,0.3); border-radius: 6px;
+  }
+  #handle {
+    position: absolute; top: 50%; width: 16px; height: 16px;
+    background: #ff6b35; border: 2px solid #fff; border-radius: 50%;
+    transform: translate(-50%,-50%); cursor: ew-resize; z-index: 2;
+    box-shadow: 0 0 6px rgba(255,107,53,0.5);
+  }
+  #tlabel {
+    position: absolute; bottom: -18px; font-size: 11px; color: #ff6b35;
+    font-weight: 600; transform: translateX(-50%); white-space: nowrap;
+  }
+  #fimg {
+    width: 100%; max-height: 280px; object-fit: contain;
+    border-radius: 6px; display: block; background: #000;
+  }
+  #fcap {
+    text-align: center; font-size: 12px; color: #888; margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div id="root">
+  <div id="track">
+    <div id="fill"></div>
+    <div id="handle"></div>
+    <div id="tlabel"></div>
+  </div>
+  <img id="fimg" src="">
+  <div id="fcap"></div>
+</div>
+
+<script>
+(function() {
+  function sendMessage(type, data) {
+    window.parent.postMessage(
+      Object.assign({ isStreamlitMessage: true, type: type }, data || {}),
+      "*"
+    );
+  }
+
+  function setComponentReady() {
+    sendMessage("streamlit:componentReady", { apiVersion: 1 });
+  }
+
+  function setValue(val) {
+    sendMessage("streamlit:setComponentValue", { value: val });
+  }
+
+  function setHeight() {
+    if (!root) return;
+    sendMessage("streamlit:setFrameHeight", {
+      height: Math.ceil(root.getBoundingClientRect().height)
+    });
+  }
+
+  var urls = [], times = [], secs = [], clips = [];
+  var idx = 0, dragging = false, N = 0, commitCounter = 0;
+  var root, track, fill, handle, tlabel, fimg, fcap;
+
+  var cache = {};
+  function loadFrame(i) {
+    if (cache[i]) return cache[i];
+    var img = new Image();
+    img.src = urls[i];
+    cache[i] = img;
+    return img;
+  }
+  function preload(i) {
+    for (var d = -10; d <= 20; d++) {
+      var j = i + d;
+      if (j >= 0 && j < N) loadFrame(j);
+    }
+  }
+
+  function update() {
+    if (!N || !track) return;
+    var pct = idx / Math.max(1, N - 1);
+    var tw = track.offsetWidth;
+    handle.style.left = (pct * tw) + "px";
+    fill.style.width = (pct * tw) + "px";
+    tlabel.style.left = (pct * tw) + "px";
+    tlabel.textContent = times[idx];
+    fcap.textContent = clips[idx] ? times[idx] + " - " + clips[idx] : times[idx];
+    var cached = loadFrame(idx);
+    if (cached.complete && cached.naturalWidth) {
+      fimg.src = cached.src;
+      setHeight();
+    } else {
+      cached.onload = function() {
+        if (fimg) {
+          fimg.src = cached.src;
+          setHeight();
+        }
+      };
+    }
+    preload(idx);
+  }
+
+  function idxFromEvt(e) {
+    var r = track.getBoundingClientRect();
+    var x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
+    return Math.max(0, Math.min(N - 1, Math.round((x / r.width) * (N - 1))));
+  }
+
+  function onDown(e) {
+    if (!N) return;
+    dragging = true;
+    idx = idxFromEvt(e);
+    update();
+    document.body.style.cursor = "ew-resize";
+  }
+  function onMove(e) {
+    if (!dragging) return;
+    if (e.preventDefault) e.preventDefault();
+    idx = idxFromEvt(e);
+    update();
+  }
+  function onUp() {
+    if (!dragging) return;
+    dragging = false;
+    document.body.style.cursor = "";
+    commitCounter += 1;
+    setValue({
+      rideSecs: secs[idx],
+      commitId: Date.now().toString() + "-" + commitCounter.toString()
+    });
+  }
+
+  root = document.getElementById("root");
+  track = document.getElementById("track");
+  fill = document.getElementById("fill");
+  handle = document.getElementById("handle");
+  tlabel = document.getElementById("tlabel");
+  fimg = document.getElementById("fimg");
+  fcap = document.getElementById("fcap");
+
+  track.addEventListener("mousedown", onDown);
+  track.addEventListener("touchstart", onDown, { passive: true });
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("touchmove", onMove, { passive: false });
+  document.addEventListener("mouseup", onUp);
+  document.addEventListener("touchend", onUp);
+  document.addEventListener("touchcancel", onUp);
+  window.addEventListener("resize", function() {
+    update();
+    setHeight();
+  });
+  fimg.addEventListener("load", setHeight);
+
+  // Listen for render events from Streamlit
+  window.addEventListener("message", function(event) {
+    if (!event.data || event.data.type !== "streamlit:render") return;
+    var args = event.data.args || {};
+
+    urls = args.frameUrls || [];
+    times = args.timeLabels || [];
+    secs = args.rideSecs || [];
+    clips = args.clipNames || [];
+    N = urls.length;
+    idx = args.initialIdx || 0;
+    if (idx >= N) idx = N - 1;
+    if (idx < 0) idx = 0;
+
+    update();
+    setTimeout(setHeight, 0);
+  });
+
+  setComponentReady();
+  setHeight();
+})();
+</script>
+</body>
+</html>
