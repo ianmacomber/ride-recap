@@ -66,7 +66,7 @@ Verify it runs:
 
 ```bash
 gopro-garmin --help
-pytest                    # 11 smoke tests, no video or API keys needed
+pytest                    # smoke tests, no video or API keys needed
 ```
 
 ---
@@ -136,7 +136,7 @@ One thing worth knowing: in June my Gemini billing lapsed, every call 403'd, the
 
 The interesting config isn't in `.env`.
 
-**`prompts/gemini_scan/v10.md`** is the most important file in the repo. It's the system instruction for the vision scan — a five-dimension rubric (light, composition, motion, scenery, subject, each 1–10) with anchored examples and a set of named rules, each one traceable to a specific clip I hated. My taste is legislated in there: the openness gate exists because a rail-trail tunnel scored 7.2 and I think tunnels look like being stuck in a concrete tube. **You may disagree.** Yours is a different file — write `v11.md`.
+**`src/gopro_garmin_pipeline/prompts/gemini_scan/v10.md`** is the most important file in the repo. It's the system instruction for the vision scan — a five-dimension rubric (light, composition, motion, scenery, subject, each 1–10) with anchored examples and a set of named rules, each one traceable to a specific clip I hated. My taste is legislated in there: the openness gate exists because a rail-trail tunnel scored 7.2 and I think tunnels look like being stuck in a concrete tube. **You may disagree.** Yours is a different file — write `v11.md`.
 
 Prompts are immutable and versioned: never edit v10, write v11. The version string is baked into the scan's cache key, so a bump invalidates exactly the affected results and nothing else. Frontmatter requires a rationale explaining what failure prompted the version.
 
@@ -193,7 +193,8 @@ src/gopro_garmin_pipeline/
   candidate_review.py # Streamlit reviewer
   labeler.py          # Streamlit labeler (ground truth for prompt work)
   design/tokens.json  # All color, type, and lockup tokens
-prompts/              # Versioned, immutable LLM prompts
+  prompts/            # Versioned, immutable LLM prompts (ship with the package)
+  assets/fonts/       # Bundled OFL faces (ship with the package)
 tests/                # Smoke tests
 ```
 
@@ -210,6 +211,6 @@ Two design notes, if you're reading the code. `LayoutGeometry` holds every layou
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Bundled fonts (Barlow Condensed, Inter) are SIL OFL 1.1; see [assets/fonts/OFL.txt](assets/fonts/OFL.txt).
+MIT — see [LICENSE](LICENSE). Bundled fonts (Barlow Condensed, Inter) are SIL OFL 1.1; see [src/gopro_garmin_pipeline/assets/fonts/OFL.txt](src/gopro_garmin_pipeline/assets/fonts/OFL.txt).
 
 Contributions welcome, but this is a personal project I use most weekends — I'd rather it stay small and opinionated than grow into a framework. If you fork it and make it yours, tell me; I'd like to see your reel.

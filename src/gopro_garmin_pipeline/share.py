@@ -21,13 +21,14 @@ DRIVE_FOLDER = "GoPro_Highlights"
 _SHARE_HEIGHT = {"landscape": 1080, "portrait": 1920}
 _SHARE_BITRATE = {"landscape": "12M", "portrait": "8M"}
 
-# Hardware HEVC first (VideoToolbox on macOS, NVENC/VAAPI on Linux), then a
+# Hardware HEVC first (VideoToolbox on macOS, NVENC on Linux), then a
 # software fallback. Picked by probing ffmpeg rather than by platform sniffing,
-# since a given build may lack any of them.
+# since a given build may lack any of them. hevc_vaapi is deliberately absent:
+# most Linux ffmpeg builds list it, but it fails without a -vaapi_device and a
+# nv12/vaapi filter chain, neither of which we pass.
 _ENCODER_PREFERENCE = [
     "hevc_videotoolbox",
     "hevc_nvenc",
-    "hevc_vaapi",
     "libx265",
     "libx264",
 ]

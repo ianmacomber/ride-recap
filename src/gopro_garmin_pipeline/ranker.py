@@ -102,6 +102,19 @@ def _apply_keyword_boost(rating: float, description: str) -> tuple[float, float]
 
 # --- Gemini API ---
 
+def _require_api_key(settings: Settings) -> None:
+    """Fail fast, and legibly, when no Gemini key is configured.
+
+    Without this, genai.Client raises an opaque auth error from deep
+    inside the first API call (or worse, it gets swallowed into an
+    ERROR-tier ClipScore per clip).
+    """
+    if not settings.gemini_api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY is not set — required for `rank`/`score`."
+        )
+
+
 def _call_gemini_with_video(video_path: Path, prompt: str, settings: Settings) -> str:
     """Call Gemini with native video upload."""
     from google import genai
@@ -170,6 +183,7 @@ def score_clip(
     """
     if settings is None:
         settings = get_settings()
+    _require_api_key(settings)
 
     video_path = Path(video_path)
 
@@ -256,6 +270,7 @@ def score_clips(
     """Score multiple clips and return (path, score) pairs sorted by excitement rating."""
     if settings is None:
         settings = get_settings()
+    _require_api_key(settings)
 
     results: list[tuple[Path, ClipScore]] = []
     for path in video_paths:

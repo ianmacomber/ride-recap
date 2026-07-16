@@ -74,9 +74,6 @@ def _zone_color_at(frac: float, zones: list[tuple[float, tuple[int, int, int, in
     return zones[-1][1]
 
 
-# ─── Asset paths ───────────────────────────────────────────────
-_FONT_DIR = Path(__file__).parent.parent.parent / "assets" / "fonts"
-
 # ─── Map tile config ───────────────────────────────────────────
 _TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 _TILE_SIZE = 256

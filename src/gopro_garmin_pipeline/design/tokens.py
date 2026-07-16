@@ -15,9 +15,9 @@ import json
 from pathlib import Path
 from typing import Tuple
 
-# Repo root (fonts live in repo-level assets/, not package data):
-# design/ → gopro_garmin_pipeline/ → src/ → repo root.
-REPO = Path(__file__).resolve().parents[3]
+# Package root (fonts ship as package data under assets/fonts/, so they
+# resolve in any install, editable or not): design/ → gopro_garmin_pipeline/.
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 TOKENS_PATH = Path(__file__).resolve().parent / "tokens.json"
 
 with TOKENS_PATH.open() as _f:
@@ -65,10 +65,10 @@ ZONE_COLORS = [hex_to_rgb(_Z[k]) for k in ("z1", "z2", "z3", "z4", "z5", "z6")]
 # ─── Fonts ────────────────────────────────────────────────────
 def _font_path(rel: str) -> str:
     """Resolve a font path. Absolute paths returned as-is; relative paths
-    are resolved against the repo root."""
+    are resolved against the package root."""
     if rel.startswith("/"):
         return rel
-    return str(REPO / rel)
+    return str(PACKAGE_ROOT / rel)
 
 
 def _first_existing(candidates: list[str], fallback: str) -> str:

@@ -76,6 +76,21 @@ def test_bundled_fonts_exist():
         assert os.path.exists(path), f"bundled font missing: {path}"
 
 
+def test_package_data_stays_inside_the_package():
+    """Fonts and prompts must resolve inside the installed package, not the
+    source checkout. Regression: font paths once derived from the repo root,
+    which only exists under `pip install -e .` — a plain install crashed
+    every overlay burn."""
+    import gopro_garmin_pipeline
+    from pathlib import Path
+    pkg = Path(gopro_garmin_pipeline.__file__).parent
+    for path in (T.FONT_NUMERIC, T.FONT_NUMERIC_REG, T.FONT_BODY):
+        assert Path(path).is_relative_to(pkg), f"font escapes the package: {path}"
+
+    from gopro_garmin_pipeline.prompt_registry import prompt_body
+    assert prompt_body("gemini_scan", "v10").strip()
+
+
 def test_tokens_carry_no_personal_defaults():
     """The public defaults must not ship one rider's home turf."""
     assert T.LOCKUP_ORIGIN == "START"

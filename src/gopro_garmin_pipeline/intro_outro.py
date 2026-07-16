@@ -21,16 +21,15 @@ from PIL import Image, ImageDraw, ImageFont
 # Pull design tokens from the project's single source of truth.
 from .design.tokens import (
     SAGE, MINT, CREAM, CARD_BG, TEXT_MUTED,
-    FONT_NUMERIC, FONT_BODY, FONT_SERIF,
+    FONT_NUMERIC, FONT_NUMERIC_REG, FONT_BODY, FONT_SERIF,
     LOCKUP_ROAD, LOCKUP_CREW, LOCKUP_ORIGIN, LOCKUP_SUBTITLE,
 )
 
 from .fit_parser import RideData
 from .utils import M_TO_FT, M_TO_MILES, MS_TO_MPH
 
-_FONT_DIR = Path(__file__).parent.parent.parent / "assets" / "fonts"
-_FONT_BOLD = str(_FONT_DIR / "BarlowCondensed-Bold.ttf")
-_FONT_REG = str(_FONT_DIR / "BarlowCondensed-Regular.ttf")
+_FONT_BOLD = FONT_NUMERIC
+_FONT_REG = FONT_NUMERIC_REG
 
 # Last-resort outro-card defaults, from design/tokens.json. Normally the CLI
 # resolves these per-ride (flag → prompt → GPS); these only apply when nothing

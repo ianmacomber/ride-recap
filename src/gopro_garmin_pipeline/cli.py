@@ -418,6 +418,10 @@ def score(clip_path: Path):
     from .ranker import score_clip
 
     settings = get_settings()
+    if not settings.gemini_api_key:
+        raise click.ClickException(
+            "GEMINI_API_KEY is not set — required for `rank`/`score`."
+        )
     click.echo(f"Scoring {clip_path.name} with {settings.gemini_model}...")
     result = score_clip(clip_path, settings)
 
@@ -444,6 +448,10 @@ def rank(clip_dir: Path, top_n: int):
     from .ranker import score_clips
 
     settings = get_settings()
+    if not settings.gemini_api_key:
+        raise click.ClickException(
+            "GEMINI_API_KEY is not set — required for `rank`/`score`."
+        )
     clips = sorted(clip_dir.glob("*.mp4")) + sorted(clip_dir.glob("*.MP4"))
     if not clips:
         click.echo("No .mp4 files found.")
@@ -645,14 +653,26 @@ def process(date_folder: Path, offset: float, no_auto_sync: bool,
     require_ffmpeg()
     from .utils import keep_system_awake
 
-    # Hold the system awake for the duration. 4K libx264 burns get
-    # devastated by App Nap if the display sleeps mid-pipeline.
-    # Discover FIT up-front so the recap prompt has GPS context.
-    fit_files = list(date_folder.glob("*.fit")) + list(date_folder.glob("*.FIT"))
+    # Preflight: discover FIT + MP4s before the interactive prompts and
+    # caffeinate so a missing file fails fast instead of after the user
+    # has answered five recap questions. (FIT is also needed up-front so
+    # the recap prompt has GPS context.)
+    fit_files = sorted(
+        list(date_folder.glob("*.fit")) + list(date_folder.glob("*.FIT"))
+    )
     if not fit_files:
-        click.echo("No .fit file found in the date folder.")
-        return
+        raise click.ClickException("No .fit file found in the date folder.")
+    if len(fit_files) > 1:
+        click.echo(
+            f"Warning: {len(fit_files)} FIT files found "
+            f"({', '.join(f.name for f in fit_files)}) — "
+            f"using {fit_files[0].name} (first in sorted order)."
+        )
     fit_path = fit_files[0]
+
+    mp4_files = list(date_folder.glob("*.MP4")) + list(date_folder.glob("*.mp4"))
+    if not mp4_files:
+        raise click.ClickException("No .MP4 files found in the date folder.")
 
     # Prompt for recap-card fields before caffeinate / heavy work so the
     # user can walk away after answering. Each --flag skips its prompt.
@@ -661,6 +681,8 @@ def process(date_folder: Path, offset: float, no_auto_sync: bool,
         road=road, subtitle=subtitle, crew=crew,
     )
 
+    # Hold the system awake for the duration. 4K libx264 burns get
+    # devastated by App Nap if the display sleeps mid-pipeline.
     with keep_system_awake() as awake:
         if awake:
             click.echo("System sleep paused (caffeinate -di) for the duration.")
@@ -688,16 +710,17 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
     from .composer import ComposerConfig, generate_all_candidates, compose_highlight
     from .gpmf_sync import resolve_offset
 
-    # Discover files
-    fit_files = list(date_folder.glob("*.fit")) + list(date_folder.glob("*.FIT"))
+    # Discover files (`process` already preflighted and warned about
+    # multiple FITs; sorted-first keeps the pick deterministic here too)
+    fit_files = sorted(
+        list(date_folder.glob("*.fit")) + list(date_folder.glob("*.FIT"))
+    )
     mp4_files = list(date_folder.glob("*.MP4")) + list(date_folder.glob("*.mp4"))
 
     if not fit_files:
-        click.echo("No .fit file found in the date folder.")
-        return
+        raise click.ClickException("No .fit file found in the date folder.")
     if not mp4_files:
-        click.echo("No .MP4 files found in the date folder.")
-        return
+        raise click.ClickException("No .MP4 files found in the date folder.")
 
     fit_path = fit_files[0]
     click.echo(f"FIT file: {fit_path.name}")
@@ -855,7 +878,7 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
             "--",
             "--video-dir", str(date_folder),
             "--fit", str(fit_path),
-            "--offset", str(offset),
+            "--offset", str(resolved_offset),
         ]
         if labels_path:
             cmd.extend(["--labels", str(labels_path)])

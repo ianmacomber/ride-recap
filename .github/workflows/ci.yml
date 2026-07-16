@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.11", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install (editable, dev extras)
+        run: pip install -e ".[dev]"
+      - name: Lint
+        run: ruff check .
+      - name: Smoke tests
+        run: pytest -q
+
+  # The stranger's path: a plain (non-editable) install must still find the
+  # bundled fonts and prompts, which ship as package data.
+  install-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Non-editable install
+        run: pip install .
+      - name: Package data resolves outside the source tree
+        run: |
+          cd /tmp
+          python - <<'EOF'
+          import os
+          from gopro_garmin_pipeline.design import tokens as T
+          from gopro_garmin_pipeline.prompt_registry import prompt_body
+
+          for name in ("FONT_NUMERIC", "FONT_NUMERIC_REG", "FONT_BODY"):
+              path = getattr(T, name)
+              assert os.path.exists(path), f"{name} missing: {path}"
+          assert prompt_body("gemini_scan", "v10").strip(), "prompt body empty"
+          print("fonts + prompts OK")
+          EOF
+      - name: CLI entry points
+        run: |
+          gopro-garmin --help > /dev/null
+          ride-recap --help > /dev/null

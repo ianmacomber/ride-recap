@@ -568,20 +568,6 @@ def _save_clip_cache(
     cache_file.write_text(json.dumps(hits, indent=2))
 
 
-def _load_legacy_cache(video_dir: Path) -> list[dict] | None:
-    """Load old-style gemini_cache.json for backward compatibility."""
-    cache_path = video_dir / "gemini_cache.json"
-    if not cache_path.exists():
-        return None
-    try:
-        data = json.loads(cache_path.read_text())
-        if isinstance(data, list):
-            return data
-    except (json.JSONDecodeError, OSError):
-        pass
-    return None
-
-
 # ─── Two-pass scan per clip ──────────────────────────────────
 
 def _scan_clip(
@@ -1095,7 +1081,6 @@ def scan_ride(
       2. Fine: rate hot regions, telemetry/label peaks, and coverage samples
 
     Per-clip caching means only new/changed clips get scanned.
-    Falls back to legacy gemini_cache.json if present.
 
     If labels are provided, their timestamps are injected as forced
     fine-pass regions so Gemini always scores labeled moments (blind —
@@ -1104,14 +1089,6 @@ def scan_ride(
     from .config import get_settings
 
     video_dir = Path(video_dir)
-
-    # Check for legacy cache (backward compat)
-    legacy = _load_legacy_cache(video_dir)
-    if legacy is not None:
-        print(f"  Gemini scan: using legacy cache ({len(legacy)} hits)")
-        candidates = _hits_to_segments(legacy, synced_clips, ride, config)
-        print(f"  Gemini scan: {len(candidates)} interesting moments from cache")
-        return candidates
 
     settings = get_settings()
     if not settings.gemini_api_key:

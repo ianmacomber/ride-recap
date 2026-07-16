@@ -52,7 +52,13 @@ ride-recap = "gopro_garmin_pipeline.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-gopro_garmin_pipeline = ["design/tokens.json", "components/ride_scrubber/index.html"]
+gopro_garmin_pipeline = [
+    "design/tokens.json",
+    "components/ride_scrubber/index.html",
+    "assets/fonts/*",
+    "prompts/README.md",
+    "prompts/*/*.md",
+]
 
 [tool.ruff]
 line-length = 100

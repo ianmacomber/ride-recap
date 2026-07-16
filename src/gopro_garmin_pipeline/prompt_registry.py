@@ -1,6 +1,7 @@
 """Filesystem-backed prompt registry.
 
-Prompts live under ``<repo>/prompts/<name>/<version>.md`` with TOML
+Prompts ship as package data under ``gopro_garmin_pipeline/prompts/<name>/
+<version>.md`` with TOML
 frontmatter (``+++`` delimiters) describing the version and a body
 that is the raw prompt template with ``{placeholder}`` substitutions
 for ``str.format``.
@@ -17,7 +18,7 @@ from functools import lru_cache
 from pathlib import Path
 
 
-_PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts"
+_PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 _FM_DELIM = "+++\n"
 
 
