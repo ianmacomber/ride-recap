@@ -14,6 +14,10 @@ ride-recap process data/raw/2026-07-10/
 
 Out the other end: `highlight_landscape.mp4` (60s, 16:9) and `highlight_portrait.mp4` (30s, 9:16), clips always in ride order, HUD burned in.
 
+**▶ Watch a finished reel** (River Road to 9W Market):
+
+[![Watch a ride-recap reel on YouTube](https://img.youtube.com/vi/ZBrneOOYmG0/maxresdefault.jpg)](https://www.youtube.com/watch?v=ZBrneOOYmG0)
+
 There's a long write-up of how it works and everything I got wrong building it: **[Teaching LLMs Taste](https://iandmacomber.com/blog/gopro-garmin-gemini-ride-recap)**.
 
 ---
