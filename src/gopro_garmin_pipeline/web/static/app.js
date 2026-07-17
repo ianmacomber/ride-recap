@@ -65,9 +65,6 @@ function loadRideData(clipName) {
 // Initial load for the first clip.
 loadRideData();
 
-// Exposed so review.js can swap clips and findNearestPoint can be reused.
-window.reloadRideData = loadRideData;
-window.findNearestPoint = findNearestPoint;
 
 // ─── GPS Trace Projection ──────────────────────────────────────────
 

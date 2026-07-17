@@ -90,8 +90,8 @@ def test_package_data_stays_inside_the_package():
     from gopro_garmin_pipeline.prompt_registry import prompt_body
     assert prompt_body("gemini_scan", "v10").strip()
 
-    # The Flask reviewer's templates and static assets ship the same way;
-    # `review-ride` crashes on a plain install if these fall out of
+    # The Flask preview's templates and static assets ship the same way;
+    # `review` crashes on a plain install if these fall out of
     # package-data.
     assert (pkg / "web" / "templates" / "index.html").is_file()
     assert (pkg / "web" / "static" / "app.js").is_file()

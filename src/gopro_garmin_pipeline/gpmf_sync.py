@@ -334,7 +334,7 @@ def save_sync_meta(ride_dir: Path, report: OffsetReport) -> Path:
     """Persist an OffsetReport to <ride_dir>/sync.json.
 
     Stored as plain JSON so any tool can read it without importing the
-    pipeline. Future runs of compose-selected, review-ride, etc. pick
+    pipeline. Future runs of compose-selected etc. pick
     this up automatically as the default offset.
     """
     ride_dir = Path(ride_dir)

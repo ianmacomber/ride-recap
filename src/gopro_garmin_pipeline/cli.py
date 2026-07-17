@@ -638,10 +638,9 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
     if len(candidates) > 10:
         click.echo(f"  ... and {len(candidates) - 10} more")
 
-    # Always write moments.json — the canonical artifact. Both review
-    # paths (Streamlit + unified web) read it; compose-selected reads
-    # it; review-ride reads it. Status starts as `pending`; --skip-review
-    # marks the auto-selected subset as `auto` after composition.
+    # Always write moments.json — the canonical artifact. compose-selected
+    # reads it. Status starts as `pending`; --skip-review marks the
+    # auto-selected subset as `auto` after composition.
     from .proposals import (
         proposals_from_segments, save_proposals,
         STATUS_AUTO,
@@ -696,10 +695,9 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
             from .share import share_outputs
             share_outputs(date_folder, results)
     else:
-        # Legacy reviewer shape — sorted by score descending; a thin
-        # projection of the same MomentProposals so the Streamlit
-        # reviewer keeps working during the transition. Drop once the
-        # unified web review fully replaces it.
+        # Reviewer input — sorted by score descending; a thin projection
+        # of the same MomentProposals in the shape the Streamlit
+        # reviewer consumes.
         import json
         candidates_json = [
             {
@@ -916,56 +914,6 @@ def review(video_path: Path, fit_file: Path, offset: float, port: int, host: str
     click.echo(f"Starting review server at http://{host}:{port}")
     click.echo("Open in Safari for HEVC playback support.")
     webbrowser.open(f"http://{host}:{port}")
-    app.run(host=host, port=port, debug=False)
-
-
-@main.command("review-ride")
-@click.argument("date_folder", type=click.Path(exists=True, file_okay=False, path_type=Path))
-@click.option("--offset", default=0.0, help="Manual FIT-vs-GoPro offset (seconds). "
-              "Default 0 ↔ read from <date_folder>/sync.json if present, else auto-detect.")
-@click.option("--no-auto-sync", is_flag=True,
-              help="Disable GPMF auto-sync. Use --offset as-is even if 0.")
-@click.option("--port", default=5556, help="Port for the web server")
-@click.option("--host", default="127.0.0.1", help="Host to bind to")
-def review_ride(date_folder: Path, offset: float, no_auto_sync: bool,
-                port: int, host: str):
-    """Launch the unified ride-review web UI.
-
-    DATE_FOLDER: a ride folder like data/raw/2026-04-19/ containing
-    GoPro .MP4 chapters + a .fit file. moments.json must exist (run
-    `gopro-garmin process` first to generate it).
-    """
-    from .web.app import create_app
-    from .gpmf_sync import resolve_offset
-    import webbrowser
-
-    fit_files = _find_fits(date_folder)
-    if not fit_files:
-        click.echo(f"No .fit file in {date_folder}")
-        return
-
-    moments = date_folder / "moments.json"
-    if not moments.exists():
-        click.echo(
-            f"moments.json not found in {date_folder}. "
-            f"Run `gopro-garmin process {date_folder}` first."
-        )
-        return
-
-    resolved_offset, source = resolve_offset(
-        date_folder, manual_offset=offset, auto=not no_auto_sync,
-    )
-    click.echo(f"Sync: {resolved_offset:+.2f}s  ({source})")
-    click.echo(f"Loading ride from {date_folder}...")
-    app = create_app(
-        ride_dir=str(date_folder),
-        fit_path=str(fit_files[0]),
-        offset=resolved_offset,
-    )
-    url = f"http://{host}:{port}"
-    click.echo(f"Unified ride review at {url}")
-    click.echo("Open in Safari for HEVC playback support.")
-    webbrowser.open(url)
     app.run(host=host, port=port, debug=False)
 
 
