@@ -9,7 +9,7 @@ I ride ~3 hours most weekends, usually out of Manhattan and up 9W. By the end of
 This finds them. One command, about ten minutes, roughly four cents of Gemini:
 
 ```bash
-gopro-garmin process data/raw/2026-07-10/
+ride-recap process data/raw/2026-07-10/
 ```
 
 Out the other end: `highlight_landscape.mp4` (60s, 16:9) and `highlight_portrait.mp4` (30s, 9:16), clips always in ride order, HUD burned in.
@@ -65,7 +65,7 @@ MAX_HEART_RATE=196               # ← YOUR max heart rate
 Verify it runs:
 
 ```bash
-gopro-garmin --help
+ride-recap --help
 pytest                    # smoke tests, no video or API keys needed
 ```
 
@@ -84,14 +84,14 @@ data/raw/2026-07-10/
 └── ride.fit
 ```
 
-The FIT comes off the Edge over USB, or `gopro-garmin garmin-download --date 2026-07-10 --output-dir data/raw/2026-07-10`.
+The FIT comes off the Edge over USB, or `ride-recap garmin-download --date 2026-07-10 --output-dir data/raw/2026-07-10`.
 
 **Copy the `.LRV` files off the SD card.** GoPro already writes an 848×480 H.264 proxy next to every recording. The scan downscales to 480px anyway, so the proxy is exactly the resolution needed and decodes 10-20x faster — frame extraction drops from ~25 minutes to ~30 seconds. The pipeline auto-detects them and still burns from the full-res `.MP4`. Look for the artifact the hardware already produces before optimizing the computation.
 
 Then:
 
 ```bash
-gopro-garmin process data/raw/2026-07-10/
+ride-recap process data/raw/2026-07-10/
 ```
 
 It'll ask five questions (start, destination, road, a saying, who you rode with — all with GPS-derived defaults, just hit Enter), sync the clocks, scan the footage, and open a Streamlit reviewer at `:8501` with 5-second preview clips.
@@ -99,14 +99,14 @@ It'll ask five questions (start, destination, road, a saying, who you rode with 
 **`process` stops at the reviewer.** Pick your clips, then run the command it prints:
 
 ```bash
-gopro-garmin compose-selected data/raw/2026-07-10/selected_candidates.json \
+ride-recap compose-selected data/raw/2026-07-10/selected_candidates.json \
     data/raw/2026-07-10 data/raw/2026-07-10/ride.fit
 ```
 
 Or skip the human entirely:
 
 ```bash
-gopro-garmin process data/raw/2026-07-10/ --skip-review
+ride-recap process data/raw/2026-07-10/ --skip-review
 ```
 
 That's the one command that goes end to end. The autonomous output is usually good.
@@ -145,10 +145,10 @@ Prompts are immutable and versioned: never edit v10, write v11. The version stri
 If you want to teach it your taste systematically, there's a loop for that: label a ride, scan it, diff your ratings against the model's, fix the prompt.
 
 ```bash
-gopro-garmin extract-frames <fit> <dir>   # once per ride, ~2 min
-gopro-garmin label <fit> <dir> --offset <secs>
-gopro-garmin compare <date-folder>        # your labels vs the scan
-gopro-garmin eval-prompt <folder>...      # feeds the diff back for suggestions
+ride-recap extract-frames <fit> <dir>   # once per ride, ~2 min
+ride-recap label <fit> <dir> --offset <secs>
+ride-recap compare <date-folder>        # your labels vs the scan
+ride-recap eval-prompt <folder>...      # feeds the diff back for suggestions
 ```
 
 It took me an evening and produced prompt versions 3 through 5. It isn't retraining a model; it's coaching a video editor by showing them the cuts you didn't like.
@@ -158,22 +158,22 @@ It took me an evening and produced prompt versions 3 through 5. It isn't retrain
 ## Commands
 
 ```bash
-gopro-garmin process <date-folder>            # the main one
-gopro-garmin process <date-folder> --skip-review
+ride-recap process <date-folder>            # the main one
+ride-recap process <date-folder> --skip-review
 
-gopro-garmin compose <video-dir> <fit>        # compose without the reviewer
-gopro-garmin compose-selected <sel> <dir> <fit>
-gopro-garmin review-candidates <video-dir> <fit>
-gopro-garmin review <video> <fit>             # single-clip overlay preview (Flask)
-gopro-garmin burn <video> <fit> -o out.mp4    # overlay a single clip
+ride-recap compose <video-dir> <fit>        # compose without the reviewer
+ride-recap compose-selected <sel> <dir> <fit>
+ride-recap review-candidates <video-dir> <fit>
+ride-recap review <video> <fit>             # single-clip overlay preview (Flask)
+ride-recap burn <video> <fit> -o out.mp4    # overlay a single clip
 
-gopro-garmin inspect-fit <fit>                # ride stats, no video needed
-gopro-garmin find-highlights <fit>            # telemetry highlights only
-gopro-garmin garmin-download --date 2026-07-10
-gopro-garmin strava-segments <activity-id>
+ride-recap inspect-fit <fit>                # ride stats, no video needed
+ride-recap find-highlights <fit>            # telemetry highlights only
+ride-recap garmin-download --date 2026-07-10
+ride-recap strava-segments <activity-id>
 ```
 
-`ride-recap` works as an alias for `gopro-garmin` everywhere.
+`gopro-garmin` works as an alias for `ride-recap` everywhere (it's the original name, still used in the [write-up](https://iandmacomber.com/blog/gopro-garmin-gemini-ride-recap) and its figures).
 
 ---
 
