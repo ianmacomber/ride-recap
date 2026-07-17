@@ -140,8 +140,7 @@ def extract_ride_frames(
 
     total_expected = sum(
         len(range(0, int(dur), interval))
-        for _, _, dur, off, _ in work
-        if True  # count all
+        for _, _, dur, _, _ in work
     )
     print(f"\nExtracting ~{total_expected} frames across {len(work)} clips (parallel)...")
 

@@ -107,17 +107,6 @@ class _TraceStyle:
         draw.line(pts, fill=(255, 255, 255, 240), width=stroke_w,
                   joint="curve")
 
-    @staticmethod
-    def draw_dot(draw: ImageDraw.Draw, x: int, y: int, frame_w: int, sc: float,
-                 halo: int = 10, glow: int = 5):
-        dot_r = max(3, int(frame_w * 0.004))
-        hr = dot_r + _s(halo, sc)
-        draw.ellipse([x - hr, y - hr, x + hr, y + hr], fill=(0, 0, 0, 140))
-        gr = dot_r + _s(glow, sc)
-        draw.ellipse([x - gr, y - gr, x + gr, y + gr], fill=(255, 255, 255, 100))
-        draw.ellipse([x - dot_r, y - dot_r, x + dot_r, y + dot_r],
-                     fill=(255, 255, 255, 255))
-
 
 # ═══════════════════════════════════════════════════════════════
 # Layout geometry — all layout-varying dimensions in one place
@@ -131,7 +120,6 @@ class LayoutGeometry:
     # Fonts (4K-base sizes)
     font_value: int
     font_label: int
-    font_icon: int
     font_dist: int
     font_dist_sm: int
 
@@ -142,7 +130,6 @@ class LayoutGeometry:
 
     # HUD metrics stack
     hud_margin: int               # 4K-base
-    hud_icon_w: int
     hud_gap: int
     hud_bar_gap: int
     hud_label_gap: int
@@ -155,8 +142,6 @@ class LayoutGeometry:
     route_w_frac: float           # fraction of w
     route_margin_r_frac: float    # fraction of w
     route_bottom_frac: float      # bottom extent (fraction of h)
-    route_min_stroke: int         # 4K-base minimum, 0 = use default
-    route_panel_alpha: int        # bg panel alpha, 0 = no panel
 
     # Elevation profile
     elev_w_frac: float            # fraction of w
@@ -169,36 +154,27 @@ class LayoutGeometry:
     dot_halo: int                 # dot outer halo radius addition
     dot_glow: int                 # dot inner glow radius addition
 
-    # Odometer
-    odo_style: str                # "combined" (single line) or "stacked" (below route)
-    odo_x_frac: float             # fraction of w (combined mode)
-    odo_y_frac: float             # fraction of h from bottom (combined mode)
-
 
 _LANDSCAPE = LayoutGeometry(
-    font_value=240, font_label=48, font_icon=90, font_dist=96, font_dist_sm=80,
+    font_value=240, font_label=48, font_dist=96, font_dist_sm=80,
     map_diameter_frac=0.12, map_margin_r_frac=0.03, map_margin_t_frac=0.03,
-    hud_margin=60, hud_icon_w=80, hud_gap=30, hud_bar_gap=10,
+    hud_margin=60, hud_gap=30, hud_bar_gap=10,
     hud_label_gap=4, hud_bar_h=16, hud_bar_w=320,
     hud_y_top_frac=0.0, hud_y_span_frac=1.0,
     route_w_frac=0.12, route_margin_r_frac=0.02, route_bottom_frac=0.80,
-    route_min_stroke=0, route_panel_alpha=0,
     elev_w_frac=0.60, elev_h_frac=0.056, elev_bottom_frac=0.02,
     trace_outer=14, trace_inner=6, dot_halo=10, dot_glow=5,
-    odo_style="stacked", odo_x_frac=0.0, odo_y_frac=0.0,
 )
 
 _PORTRAIT = LayoutGeometry(
-    font_value=130, font_label=28, font_icon=50, font_dist=72, font_dist_sm=52,
+    font_value=130, font_label=28, font_dist=72, font_dist_sm=52,
     map_diameter_frac=0.24, map_margin_r_frac=0.03, map_margin_t_frac=0.10,
-    hud_margin=36, hud_icon_w=48, hud_gap=12, hud_bar_gap=6,
+    hud_margin=36, hud_gap=12, hud_bar_gap=6,
     hud_label_gap=2, hud_bar_h=10, hud_bar_w=190,
     hud_y_top_frac=0.10, hud_y_span_frac=0.55,
     route_w_frac=0.25, route_margin_r_frac=0.03, route_bottom_frac=0.82,
-    route_min_stroke=0, route_panel_alpha=0,
     elev_w_frac=0.88, elev_h_frac=0.07, elev_bottom_frac=0.10,
     trace_outer=14, trace_inner=6, dot_halo=10, dot_glow=5,
-    odo_style="stacked", odo_x_frac=0.0, odo_y_frac=0.0,
 )
 
 _LAYOUTS: dict[str, LayoutGeometry] = {
@@ -335,7 +311,6 @@ class OverlayRenderer:
         self.synced = synced
         self.clip = synced.clip
         self.ride = ride
-        self.layout = layout  # kept for burn_overlay() ffmpeg crop logic
         # Intro title card: for the first `intro_secs` seconds the footage
         # blurs → clears (ffmpeg side) while a date + time-of-day lockup
         # fades over it and the HUD fades in. 0 disables.
@@ -349,8 +324,7 @@ class OverlayRenderer:
 
         # ── Fonts (families shared, sizes from geometry) ──────
         # Numerics come from tokens (Barlow Bold). Labels + lockup come
-        # from tokens (Inter). Icon font kept for legacy callers but the
-        # new HUD doesn't render icons.
+        # from tokens (Inter).
         self.f_value = ImageFont.truetype(FONT_NUMERIC, _s(g.font_value, self.sc))
         self.f_label = ImageFont.truetype(FONT_BODY, _s(g.font_label, self.sc))
         self.f_dist = ImageFont.truetype(FONT_NUMERIC, _s(g.font_dist, self.sc))
@@ -747,19 +721,7 @@ class OverlayRenderer:
 
         coords = [self._route_proj(lat, lon) for lat, lon in self.route_pts]
 
-        # Dynamic panel: sized to actual route content, not full allocated box
-        if g.route_panel_alpha > 0 and coords:
-            cxs = [c[0] for c in coords]
-            cys = [c[1] for c in coords]
-            panel_pad = _s(16, s)
-            draw.rounded_rectangle(
-                [min(cxs) - panel_pad, min(cys) - panel_pad,
-                 max(cxs) + panel_pad, max(cys) + panel_pad],
-                radius=_s(12, s), fill=(0, 0, 0, g.route_panel_alpha))
-
         sw = _TraceStyle.stroke_width(self.w)
-        if g.route_min_stroke > 0:
-            sw = max(sw, _s(g.route_min_stroke, s))
         _TraceStyle.draw_line(draw, coords, sw, s,
                               outer=g.trace_outer, inner=g.trace_inner)
 
@@ -767,19 +729,25 @@ class OverlayRenderer:
         self._route_y_bottom = max(c[1] for c in coords) + _s(16, s) if coords else ry1
         return img
 
+    def _draw_mint_dot(self, draw, x, y) -> int:
+        """Live-position dot: black halo, mint glow, solid mint center.
+        One rule across surfaces — mint = live position. Returns dot_r
+        so callers can offset labels off the dot."""
+        s = self.sc
+        dot_r = max(3, int(self.w * 0.004))
+        hr = dot_r + _s(self.geo.dot_halo, s)
+        draw.ellipse([x - hr, y - hr, x + hr, y + hr], fill=(0, 0, 0, 140))
+        gr = dot_r + _s(self.geo.dot_glow, s)
+        draw.ellipse([x - gr, y - gr, x + gr, y + gr], fill=(*MINT, 110))
+        draw.ellipse([x - dot_r, y - dot_r, x + dot_r, y + dot_r],
+                     fill=(*MINT, 255))
+        return dot_r
+
     def _draw_route_dot(self, draw, lat, lon):
         if not hasattr(self, '_route_proj'):
             return
         px, py = self._route_proj(lat, lon)
-        s = self.sc
-        # Mint dot — same rule as elevation dot ("mint = live position").
-        dot_r = max(3, int(self.w * 0.004))
-        hr = dot_r + _s(self.geo.dot_halo, s)
-        draw.ellipse([px - hr, py - hr, px + hr, py + hr], fill=(0, 0, 0, 140))
-        gr = dot_r + _s(self.geo.dot_glow, s)
-        draw.ellipse([px - gr, py - gr, px + gr, py + gr], fill=(*MINT, 110))
-        draw.ellipse([px - dot_r, py - dot_r, px + dot_r, py + dot_r],
-                     fill=(*MINT, 255))
+        self._draw_mint_dot(draw, px, py)
 
     # ═══════════════════════════════════════════════════════════
     # 4. Elevation profile — bottom-center sparkline
@@ -814,14 +782,7 @@ class OverlayRenderer:
 
         if dist_mi is not None and alt_ft is not None:
             mx, my = exy(dist_mi, alt_ft)
-            # Mint dot (matches route dot — one rule: mint = live position).
-            dot_r = max(3, int(self.w * 0.004))
-            hr_ = dot_r + _s(g.dot_halo, s)
-            draw.ellipse([mx - hr_, my - hr_, mx + hr_, my + hr_], fill=(0, 0, 0, 140))
-            gr_ = dot_r + _s(g.dot_glow, s)
-            draw.ellipse([mx - gr_, my - gr_, mx + gr_, my + gr_], fill=(*MINT, 110))
-            draw.ellipse([mx - dot_r, my - dot_r, mx + dot_r, my + dot_r],
-                         fill=(*MINT, 255))
+            dot_r = self._draw_mint_dot(draw, mx, my)
             self._text(draw, (mx + dot_r + _s(g.dot_halo + 6, s), my),
                        f"{int(alt_ft)} FT", self.f_dist_sm, alpha=220, anchor="lm")
 

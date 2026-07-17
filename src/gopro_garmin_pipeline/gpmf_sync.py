@@ -12,8 +12,9 @@ actual UTC moment the recording started. That offset is the same
 quantity the manual `--offset` flag has always supplied.
 
 Hero 13 records GPS in the GPS9 format (vs older cameras' GPS5). The
-upstream `gpmf` package only knows GPS5; we walk the KLV tree manually
-to find GPS9 STRM blocks and decode them with `struct`.
+upstream `gpmf` package only knows GPS5 (and drags in pandas/geopandas
+for the privilege), so this module has no GPMF dependency at all: KLV
+is a simple length-prefixed tree, walked here with `struct` directly.
 
 Example:
     offset_secs, confidence = detect_offset(Path("data/raw/2026-04-28"))
@@ -61,6 +62,23 @@ def _dump_gpmf_bytes(video_path: Path, stream_index: int) -> bytes:
     ).stdout
 
 
+def _iter_klv(buf: bytes):
+    """Walk one level of a GPMF KLV buffer.
+
+    Yields ``(fourcc, type_char, size, repeat, payload)``. Containers
+    (type 0x00) carry nested KLV in their payload — recurse with another
+    _iter_klv call. Payloads are 4-byte aligned on the wire.
+    """
+    pos = 0
+    while pos + 8 <= len(buf):
+        fourcc = buf[pos:pos + 4].decode("latin1")
+        type_char, size, repeat = struct.unpack(">BBH", buf[pos + 4:pos + 8])
+        pos += 8
+        length = size * repeat
+        yield fourcc, type_char, size, repeat, buf[pos:pos + length]
+        pos += (length + 3) & ~3
+
+
 @dataclass
 class GpsSample:
     timestamp: dt.datetime  # UTC
@@ -75,37 +93,39 @@ class GpsSample:
 def extract_gps_track(video_path: Path) -> list[GpsSample]:
     """Decode the full GPS9 track from a Hero 13 chapter.
 
-    Returns samples at the camera's GPS rate (~10 Hz). Walks the KLV
-    tree manually because the upstream gpmf parser hits a generator-
-    consumption bug on STRM containers and doesn't speak GPS9 anyway.
+    Returns samples at the camera's GPS rate (~10 Hz). Finds STRM
+    containers holding a GPS9 block plus its SCAL divisors and decodes
+    the 32-byte rows with `struct`.
     """
-    from gpmf import parse
-
     idx = _find_gpmd_stream(video_path)
     if idx is None:
         return []
     raw = _dump_gpmf_bytes(video_path, idx)
-    expanded = parse.expand_klv(raw)
 
     samples: list[GpsSample] = []
-    for devc in expanded:
-        if not (hasattr(devc, "value") and isinstance(devc.value, list)):
+    for key, typ, _, _, devc in _iter_klv(raw):
+        if key != "DEVC" or typ != 0:
             continue
-        for strm in devc.value:
-            if not (hasattr(strm, "key") and strm.key == "STRM"
-                    and isinstance(strm.value, list)):
+        for skey, styp, _, _, strm in _iter_klv(devc):
+            if skey != "STRM" or styp != 0:
                 continue
-            children = {c.key: c for c in strm.value if hasattr(c, "key")}
-            gps9 = children.get("GPS9")
-            scal = children.get("SCAL")
-            if gps9 is None or scal is None:
+            gps9 = None
+            n = 0
+            scale: list[int] = []
+            for ckey, ctyp, csize, crepeat, payload in _iter_klv(strm):
+                if ckey == "GPS9":
+                    gps9, n = payload, crepeat
+                elif ckey == "SCAL":
+                    # SCAL element width varies by stream: 'l' int32 for
+                    # GPS, 's' int16 elsewhere. Decode by declared type.
+                    fmt = {ord("l"): ">l", ord("s"): ">h"}.get(ctyp)
+                    if fmt is not None:
+                        scale = [v[0] for v in struct.iter_unpack(fmt, payload)]
+            if gps9 is None or len(scale) < 8:
                 continue
-            scale = list(scal.value)
-            data = gps9.value
-            n = gps9.length.repeat
             for i in range(n):
                 row = struct.unpack(_GPS9_FMT,
-                                    data[i * _GPS9_ROW_BYTES:(i + 1) * _GPS9_ROW_BYTES])
+                                    gps9[i * _GPS9_ROW_BYTES:(i + 1) * _GPS9_ROW_BYTES])
                 lat, lon, alt, sp2, sp3, days, secs_ms, dop, fix = row
                 ts = _GPS_EPOCH + dt.timedelta(
                     days=int(days), seconds=secs_ms / scale[6],
@@ -353,8 +373,8 @@ def resolve_offsets(
     filename → its own offset; ``default`` is the value to use for any
     clip not in the map (and for legacy callers that want one number).
 
-    Priority is the same as :func:`resolve_offset` (manual → sync.json
-    → live GPMF) — but multi-recording rides whose chapters drift
+    Priority: manual override → sync.json cache → live GPMF detection
+    → 0.0 with a note. Multi-recording rides whose chapters drift
     differently now apply each clip's own offset instead of a global
     average, which fixed the "overlay reads N seconds ahead during
     sprints" class of bug.
@@ -409,28 +429,8 @@ def resolve_offset(
       4. 0.0, with a note explaining why.
 
     Returns (offset_secs, source) where source is a short description
-    suitable for logging.
+    suitable for logging. Same resolution as :func:`resolve_offsets`,
+    minus the per-clip map.
     """
-    if manual_offset:
-        return manual_offset, f"manual --offset {manual_offset:+.2f}s"
-
-    cached = load_sync_meta(ride_dir)
-    if cached is not None and "offset_secs" in cached:
-        return float(cached["offset_secs"]), (
-            f"sync.json cache "
-            f"({cached.get('method', '?')}, "
-            f"conf={cached.get('confidence', 0.0):.2f})"
-        )
-
-    if not auto:
-        return 0.0, "auto-sync disabled"
-
-    report = detect_offset(ride_dir)
-    if report.confidence > 0:
-        save_sync_meta(ride_dir, report)
-        return report.offset_secs, (
-            f"auto-detected ({report.method}, "
-            f"conf={report.confidence:.2f})"
-        )
-
-    return 0.0, f"auto-sync failed: {report.notes}"
+    _, default, source = resolve_offsets(ride_dir, manual_offset, auto)
+    return default, source

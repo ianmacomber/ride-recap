@@ -1,12 +1,10 @@
 """Python loader for design/tokens.json — single source of truth.
 
-Use the semantic names (TEXT_PRIMARY, ACCENT_PRIMARY, etc.) when meaning
-matters more than hex. Tokens are cached at import time; restart the
-process if you edit tokens.json.
-
-If a token you need isn't exposed here yet, add it to tokens.json first,
-then re-export. Never hard-code a hex/font path in a module — it dilutes
-the system.
+Only tokens with a live consumer are exported; tokens.json holds the
+full palette. If a token you need isn't exposed here yet, add it to
+tokens.json first, then re-export (or grab it via all_tokens()). Never
+hard-code a hex/font path in a module — it dilutes the system. Tokens
+are cached at import time; restart the process if you edit tokens.json.
 """
 
 from __future__ import annotations
@@ -38,24 +36,12 @@ def hex_to_rgba(h: str, a: int = 255) -> Tuple[int, int, int, int]:
 _PRIM = _T["color"]["primitive"]
 _SEM = _T["color"]["semantic"]
 
-PAPER       = hex_to_rgb(_PRIM["paper"])
-INK         = hex_to_rgb(_PRIM["ink"])
-GRAPHITE    = hex_to_rgb(_PRIM["graphite"])
 CREAM       = hex_to_rgb(_PRIM["cream"])
-NEAR_BLACK  = hex_to_rgb(_PRIM["near_black"])
-WARM_DARK   = hex_to_rgb(_PRIM["warm_dark"])
-RULE_DIM    = hex_to_rgb(_PRIM["rule_dim"])
 SAGE        = hex_to_rgb(_PRIM["sage"])
 MINT        = hex_to_rgb(_PRIM["mint"])
-WHITE       = hex_to_rgb(_PRIM["white"])
-BLACK       = hex_to_rgb(_PRIM["black"])
 
-CARD_BG          = hex_to_rgb(_SEM["card_bg"])
-TEXT_PRIMARY     = hex_to_rgb(_SEM["text_primary"])
-TEXT_MUTED       = hex_to_rgb(_SEM["text_muted"])
-ACCENT_PRIMARY   = hex_to_rgb(_SEM["accent_primary"])
-ACCENT_SECONDARY = hex_to_rgb(_SEM["accent_secondary"])
-STROKE           = hex_to_rgb(_SEM["stroke"])
+CARD_BG     = hex_to_rgb(_SEM["card_bg"])
+TEXT_MUTED  = hex_to_rgb(_SEM["text_muted"])
 
 # Effort zones — cold-to-hot palette for power and HR bars.
 _Z = _T["color"]["zones"]
@@ -101,8 +87,7 @@ _SERIF_CANDIDATES = [
 ]
 FONT_SERIF = _first_existing(_SERIF_CANDIDATES, FONT_BODY)
 
-STROKE_RATIO_TO_FONT   = _T["typography"]["stroke_ratio_to_font"]
-LABEL_TRACKING_RATIO   = _T["typography"]["label_tracking_ratio_to_font"]
+LABEL_TRACKING_RATIO = _T["typography"]["label_tracking_ratio_to_font"]
 
 
 # ─── Lockups ──────────────────────────────────────────────────
@@ -115,18 +100,6 @@ LOCKUP_SUBTITLE = _T["lockups"]["outro_subtitle"]
 def default_lockup() -> str:
     """The bottom-band lockup string used when no per-ride override is set."""
     return f"{LOCKUP_ORIGIN}   ·   {LOCKUP_ROAD}"
-
-
-def lockup_with_destination(destination: str) -> str:
-    """e.g. lockup_with_destination('PIERMONT') → '{ORIGIN} → PIERMONT · {ROAD}'."""
-    if not destination:
-        return default_lockup()
-    return f"{LOCKUP_ORIGIN} → {destination.upper()}   ·   {LOCKUP_ROAD}"
-
-
-# ─── Voice ────────────────────────────────────────────────────
-VOICE_TAGLINE = _T["voice"]["tagline"]
-SUBTITLE_EXAMPLES = list(_T["voice"]["subtitle_examples"])
 
 
 def all_tokens() -> dict:

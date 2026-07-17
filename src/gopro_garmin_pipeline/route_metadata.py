@@ -25,9 +25,8 @@ import hashlib
 import json
 import math
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import requests
 
@@ -712,7 +711,3 @@ def compute_route_metadata(
         destination_point=destination_point,
         road_coverage_pct=coverage,
     )
-
-
-def to_dict(meta: RouteMetadata) -> dict[str, Any]:
-    return asdict(meta)

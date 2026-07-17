@@ -58,6 +58,8 @@ gopro_garmin_pipeline = [
     "assets/fonts/*",
     "prompts/README.md",
     "prompts/*/*.md",
+    "web/templates/*.html",
+    "web/static/*",
 ]
 
 [tool.ruff]

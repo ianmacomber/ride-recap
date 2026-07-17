@@ -164,6 +164,7 @@ gopro-garmin process <date-folder> --skip-review
 gopro-garmin compose <video-dir> <fit>        # compose without the reviewer
 gopro-garmin compose-selected <sel> <dir> <fit>
 gopro-garmin review-candidates <video-dir> <fit>
+gopro-garmin review-ride <date-folder>        # web timeline reviewer (Flask)
 gopro-garmin burn <video> <fit> -o out.mp4    # overlay a single clip
 
 gopro-garmin inspect-fit <fit>                # ride stats, no video needed
@@ -192,6 +193,7 @@ src/gopro_garmin_pipeline/
   strava.py           # Segment efforts + star counts
   candidate_review.py # Streamlit reviewer
   labeler.py          # Streamlit labeler (ground truth for prompt work)
+  web/                # Flask ride-timeline reviewer (review-ride)
   design/tokens.json  # All color, type, and lockup tokens
   prompts/            # Versioned, immutable LLM prompts (ship with the package)
   assets/fonts/       # Bundled OFL faces (ship with the package)

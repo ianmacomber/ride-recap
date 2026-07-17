@@ -11,12 +11,12 @@ prompts/
   gemini_scan/            # _SYSTEM_INSTRUCTION for the vision scan
     v2.md ... v10.md
   narrative_select/       # composer.py narrative clip picker
-    v1.md v2.md
+    v1.md v2.md v3.md
 ```
 
 Live at runtime: `gemini_scan` fine pass uses `v10` (`_PROMPT_VERSION` in
 `gemini_scan.py`), coarse pass uses `v5` (`_COARSE_PROMPT_VERSION` in
-`gemini_scan.py`); `narrative_select` uses `v2` (`_NARRATIVE_PROMPT_VERSION`
+`gemini_scan.py`); `narrative_select` uses `v3` (`_NARRATIVE_PROMPT_VERSION`
 in `composer.py`). Older versions stay on disk for history/diffing but
 aren't loaded by the pipeline.
 
@@ -51,5 +51,5 @@ aren't loaded by the pipeline.
 from gopro_garmin_pipeline.prompt_registry import load_prompt, list_versions
 
 meta, body = load_prompt("gemini_scan", "v5")
-list_versions("gemini_scan")  # ['v2', 'v3', 'v4', 'v5']
+list_versions("gemini_scan")  # ['v2', 'v3', ..., 'v10']
 ```

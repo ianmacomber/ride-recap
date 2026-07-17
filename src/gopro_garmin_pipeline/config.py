@@ -26,15 +26,6 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash"
 
-    # --- Frame sampling (fallback if native video upload fails) ---
-    sample_fps: float = 2.0
-    sample_max_width: int = 640
-    max_frames_per_clip: int = 16
-    motion_frame_ratio: float = 0.5
-
-    # --- Scoring ---
-    score_version: str = "v1"  # tracked with each score for A/B testing
-
     # --- OpenStreetMap ---
     # Nominatim and Overpass require a contact address on every request so
     # they can reach you if a client misbehaves. Set this to your own email
@@ -74,10 +65,6 @@ class Settings(BaseSettings):
     @property
     def raw_dir(self) -> Path:
         return self.data_dir / "raw"
-
-    @property
-    def output_dir(self) -> Path:
-        return self.data_dir / "output"
 
 
 @lru_cache(maxsize=1)

@@ -540,9 +540,9 @@ def _candidates_from_labels(
 
 
 # Rubric dimensions used for scoring. `light` is intentionally excluded:
-# on the 2026-04-28 ride it returned a single value (4) across all 17
-# rated clips, contributing nothing as a discriminator. It is still
-# stored in the rubric and shown in the reviewer for human inspection.
+# on a test ride it returned a single value (4) across all 17 rated
+# clips, contributing nothing as a discriminator. It is still stored
+# in the rubric and shown in the reviewer for human inspection.
 _SCORING_RUBRIC_DIMS = ("composition", "motion", "scenery", "subject")
 
 
@@ -1341,12 +1341,6 @@ def select_segments(
     if not candidates:
         return []
 
-    # Apply reviewer ratings if present (from candidate_review UI)
-    for seg in candidates:
-        rating = seg.label.get("rating", 0)
-        if rating >= 1:
-            seg.score += (rating - 3) * 2.0
-
     # Seed selection with "must include" candidates — they always make the cut
     must_includes = [s for s in candidates if s.label.get("must_include")]
     # n is the total slot count for the highlight (e.g. 20 for landscape, 10 for
@@ -1544,6 +1538,35 @@ def concatenate_clips(clip_paths: list[Path], output_path: Path) -> Path:
     return output_path
 
 
+def _anchored_cut(v_start: float, v_end: float, anchor: float,
+                  trim: float, intro_floor: float = 0.0) -> tuple[float, float]:
+    """Anchor-centered cut window, clamped to the rated span [v_start, v_end].
+
+    If the span is narrower than ``trim``, slide past the span edges rather
+    than shortening the cut. ``intro_floor`` (the opening title-card length,
+    0 on all but the first clip) sets a minimum duration so the full opener
+    plays. Shared by the reviewed and autonomous burn paths so both produce
+    equivalently-paced cuts. Returns ``(cut_start, duration)``.
+    """
+    half = trim / 2
+    cut_start = max(v_start, anchor - half)
+    cut_end = min(v_end, anchor + half)
+    if cut_end - cut_start < trim:
+        cut_start = max(0, anchor - half)
+        cut_end = anchor + half
+    duration = cut_end - cut_start
+    if intro_floor > 0 and duration < intro_floor:
+        duration = intro_floor
+    return cut_start, duration
+
+
+def _version_stamp(video_dir: Path) -> str:
+    """``<ridedate>_<HHMMSS>`` — ride date from the folder name (not today's
+    date), edit time from the clock, so re-edits of one ride sort together."""
+    from datetime import datetime
+    return f"{video_dir.name.replace('-', '')}_{datetime.now().strftime('%H%M%S')}"
+
+
 def compose_from_selections(
     selections_path: Path,
     video_dir: Path,
@@ -1652,6 +1675,10 @@ def compose_from_selections(
         if is_last and include_outro and active_trim > 0:
             active_trim = active_trim + outro_lead_in_secs
 
+        # First clip carries the opening blur→title card; its cut is
+        # lengthened (via intro_floor) so the full opener plays.
+        seg_intro = intro_secs if (i == 0 and include_intro) else 0.0
+
         # Pick the cut window:
         #   active_trim > 0: tight cut centered on anchor_video_secs (or
         #     review-span midpoint if no anchor). Clamped to [v_start, v_end]
@@ -1661,24 +1688,12 @@ def compose_from_selections(
             anchor = seg.get("anchor_video_secs")
             if anchor is None:
                 anchor = (v_start + v_end) / 2
-            half = active_trim / 2
-            cut_start = max(v_start, anchor - half)
-            cut_end = min(v_end, anchor + half)
-            # If the review span is narrower than active_trim, just use it
-            if cut_end - cut_start < active_trim:
-                cut_start = max(0, anchor - half)
-                cut_end = anchor + half
-            duration = cut_end - cut_start
+            cut_start, duration = _anchored_cut(
+                v_start, v_end, anchor, active_trim, intro_floor=seg_intro,
+            )
         else:
             cut_start = v_start
-            duration = v_end - v_start
-
-        # First clip carries the opening blur→title card; lengthen it so the
-        # full opener plays.
-        is_first = i == 0
-        seg_intro = intro_secs if (is_first and include_intro) else 0.0
-        if seg_intro > 0 and duration < seg_intro:
-            duration = seg_intro
+            duration = max(v_end - v_start, seg_intro)
 
         cache_key = seg["clip_name"]
         if cache_key not in renderers:
@@ -1720,11 +1735,7 @@ def compose_from_selections(
         except Exception as exc:
             print(f"  Warning: skipping outro — {exc}")
 
-    _ride_date = video_dir.name.replace("-", "")
-    from datetime import datetime as _dt
-    _edit_time = _dt.now().strftime("%H%M%S")
-    _stamp = f"{_ride_date}_{_edit_time}"
-    final = output_dir / f"highlight_{layout}_selected_{_stamp}.mp4"
+    final = output_dir / f"highlight_{layout}_selected_{_version_stamp(video_dir)}.mp4"
     concatenate_clips(clips, final)
     print(f"\nOutput: {final} ({final.stat().st_size / 1e6:.1f} MB)")
     return final
@@ -2026,20 +2037,12 @@ def compose_highlight(
 
             trim = config.segment_duration + (outro_extra if i == last_idx else 0.0)
             anchor = seg.anchor_video_secs or (seg.video_start + seg.video_end) / 2
-            half = trim / 2
-            cut_start = max(seg.video_start, anchor - half)
-            cut_end = min(seg.video_end, anchor + half)
-            if cut_end - cut_start < trim:
-                cut_start = max(0, anchor - half)
-                cut_end = anchor + half
-            duration = cut_end - cut_start
-
-            # First clip carries the opening blur→title card; lengthen it so
-            # the full opener plays.
-            is_first = i == 0
-            intro_secs = config.intro_secs if (is_first and config.include_intro) else 0.0
-            if intro_secs > 0 and duration < intro_secs:
-                duration = intro_secs
+            # First clip carries the opening blur→title card; intro_floor
+            # lengthens its cut so the full opener plays.
+            intro_secs = config.intro_secs if (i == 0 and config.include_intro) else 0.0
+            cut_start, duration = _anchored_cut(
+                seg.video_start, seg.video_end, anchor, trim, intro_floor=intro_secs,
+            )
 
             # Reuse renderer for same source clip + layout
             cache_key = seg.clip_name
@@ -2075,11 +2078,7 @@ def compose_highlight(
             burned.append(out)
         return burned
 
-    # ── Version stamp — use the ride date (folder name), not today's date ──
-    _ride_date = video_dir.name.replace("-", "")  # "2026-04-16" → "20260416"
-    from datetime import datetime as _dt
-    _edit_time = _dt.now().strftime("%H%M%S")
-    _stamp = f"{_ride_date}_{_edit_time}"
+    _stamp = _version_stamp(video_dir)
 
     # ── Outro stats (computed once, used by both layouts) ───────
     outro_stats = None

@@ -41,6 +41,8 @@ jobs:
           cd /tmp
           python - <<'EOF'
           import os
+          from pathlib import Path
+          import gopro_garmin_pipeline
           from gopro_garmin_pipeline.design import tokens as T
           from gopro_garmin_pipeline.prompt_registry import prompt_body
 
@@ -48,7 +50,10 @@ jobs:
               path = getattr(T, name)
               assert os.path.exists(path), f"{name} missing: {path}"
           assert prompt_body("gemini_scan", "v10").strip(), "prompt body empty"
-          print("fonts + prompts OK")
+          pkg = Path(gopro_garmin_pipeline.__file__).parent
+          assert (pkg / "web" / "templates" / "index.html").is_file(), "web templates missing"
+          assert (pkg / "web" / "static" / "app.js").is_file(), "web static missing"
+          print("fonts + prompts + web assets OK")
           EOF
       - name: CLI entry points
         run: |

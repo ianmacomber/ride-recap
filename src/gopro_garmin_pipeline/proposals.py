@@ -29,18 +29,6 @@ STATUS_APPROVED = "approved"    # user accepted into the cut
 STATUS_REJECTED = "rejected"    # user explicitly excluded
 STATUS_AUTO = "auto"            # not reviewed; pipeline is in skip-review mode
 
-_VALID_STATUSES = {STATUS_PENDING, STATUS_APPROVED, STATUS_REJECTED, STATUS_AUTO}
-
-
-# ─── Source labels ──────────────────────────────────────────
-
-SOURCE_TELEMETRY = "telemetry"
-SOURCE_GEMINI = "gemini"
-SOURCE_STRAVA = "strava"
-SOURCE_LABEL = "label"
-SOURCE_CLIP = "clip"          # short phone clips, each treated as a candidate
-SOURCE_MANUAL = "manual"      # added in the reviewer by scrubbing the timeline
-
 
 # ─── Stable id ──────────────────────────────────────────────
 

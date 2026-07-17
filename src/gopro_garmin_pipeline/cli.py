@@ -9,14 +9,22 @@ from pathlib import Path
 
 import click
 
-from .clip_extractor import extract_all_clips
 from .fit_parser import parse_fit
 from .gopro_meta import extract_all
 from .highlights import HighlightConfig, detect_highlights
-from .sync import sync_all
 
 
 _CREW_CACHE_PATH = Path.home() / ".ride_recap_cache" / "last_crew.txt"
+
+
+def _find_fits(folder: Path) -> list[Path]:
+    """All FIT files in a ride folder, sorted so the first pick is deterministic."""
+    return sorted(list(folder.glob("*.fit")) + list(folder.glob("*.FIT")))
+
+
+def _find_mp4s(folder: Path) -> list[Path]:
+    """All GoPro .MP4 chapters in a ride folder, either filename case."""
+    return list(folder.glob("*.MP4")) + list(folder.glob("*.mp4"))
 
 
 def _read_last_crew() -> str:
@@ -257,87 +265,6 @@ def find_highlights(fit_file: Path, power_threshold: float, speed_threshold: flo
         )
 
 
-@main.command()
-@click.argument("fit_file", type=click.Path(exists=True, path_type=Path))
-@click.argument("video_dir", type=click.Path(exists=True, path_type=Path))
-@click.argument("output_dir", type=click.Path(path_type=Path))
-@click.option("--offset", default=0.0, help="Time offset in seconds (FIT - GoPro)")
-@click.option("--power-threshold", default=None, type=float,
-              help="Power spike threshold (watts). Default: ~1.45x your FTP.")
-@click.option("--speed-threshold", default=None, type=float,
-              help="Speed spike threshold (m/s). Default: 12.0 (~27 mph).")
-@click.option("--hr-threshold", default=None, type=float,
-              help="HR spike threshold (bpm). Default: ~87% of your max HR.")
-@click.option("--with-overlay", is_flag=True, help="Re-encode clips with metric overlays")
-def extract(
-    fit_file: Path,
-    video_dir: Path,
-    output_dir: Path,
-    offset: float,
-    power_threshold: float,
-    speed_threshold: float,
-    hr_threshold: float,
-    with_overlay: bool,
-):
-    """Extract highlight clips from GoPro footage using Garmin data.
-
-    FIT_FILE: Path to the Garmin .fit file
-    VIDEO_DIR: Directory containing GoPro .mp4 files
-    OUTPUT_DIR: Directory for output clips
-    """
-    require_ffmpeg()
-    click.echo("Parsing FIT file...")
-    ride = parse_fit(fit_file)
-    click.echo(f"  {len(ride.points)} data points, {ride.duration}")
-
-    click.echo("Scanning GoPro videos...")
-    clips = extract_all(video_dir)
-    click.echo(f"  {len(clips)} video files found")
-
-    if not clips:
-        click.echo("No GoPro videos found. Exiting.")
-        return
-
-    click.echo("Syncing timestamps...")
-    synced = sync_all(clips, ride, offset)
-
-    config = HighlightConfig(**{
-        k: v for k, v in {
-            "power_spike_threshold": power_threshold,
-            "speed_spike_threshold": speed_threshold,
-            "hr_spike_threshold": hr_threshold,
-        }.items() if v is not None
-    })
-    click.echo("Detecting highlights...")
-    highlights = detect_highlights(ride, config)
-    click.echo(f"  {len(highlights)} highlights detected")
-
-    if not highlights:
-        click.echo("No highlights found. Try lowering thresholds.")
-        return
-
-    click.echo("Extracting clips...")
-    extracted = extract_all_clips(synced, highlights, output_dir)
-    click.echo(f"  {len(extracted)} clips extracted to {output_dir}")
-
-    if with_overlay:
-        from .burn_overlay import burn_overlay
-
-        click.echo("Rendering overlays (this may take a while)...")
-        overlay_dir = output_dir / "with_overlay"
-        for ext_clip in extracted:
-            out = overlay_dir / ext_clip.path.name
-            click.echo(f"  Rendering {out.name}...")
-            burn_overlay(
-                str(ext_clip.source_clip.path), str(fit_file), str(out),
-                offset=offset,
-                start_offset=ext_clip.start_secs,
-                trim_duration=ext_clip.end_secs - ext_clip.start_secs,
-            )
-
-    click.echo("Done!")
-
-
 @main.command("extract-frames")
 @click.argument("fit_file", type=click.Path(exists=True, path_type=Path))
 @click.argument("video_dir", type=click.Path(exists=True, path_type=Path))
@@ -405,71 +332,6 @@ def burn(video_path: Path, fit_file: Path, output: Path | None, offset: float,
                  layout=layout, start_offset=start_secs, trim_duration=duration,
                  encode_preset=ENCODE_MASTER if master else ENCODE_PREVIEW,
                  intro_secs=intro_secs)
-
-
-@main.command()
-@click.argument("clip_path", type=click.Path(exists=True, path_type=Path))
-def score(clip_path: Path):
-    """Score a single video clip using Gemini.
-
-    CLIP_PATH: Path to a video file to score.
-    """
-    from .config import get_settings
-    from .ranker import score_clip
-
-    settings = get_settings()
-    if not settings.gemini_api_key:
-        raise click.ClickException(
-            "GEMINI_API_KEY is not set — required for `rank`/`score`."
-        )
-    click.echo(f"Scoring {clip_path.name} with {settings.gemini_model}...")
-    result = score_clip(clip_path, settings)
-
-    click.echo(f"\n  Interesting: {result.is_interesting}")
-    click.echo(f"  Rating:      {result.excitement_rating:.1f}/10 ({result.tier})")
-    if result.keyword_boost:
-        click.echo(f"  Raw rating:  {result.raw_rating:.1f} (boost: {result.keyword_boost:+.1f})")
-    click.echo(f"  Description: {result.description}")
-    if result.best_moment:
-        click.echo(f"  Best moment: {result.best_moment}")
-    click.echo(f"  Model:       {result.model_used}")
-    click.echo(f"  Version:     {result.pipeline_version}")
-
-
-@main.command()
-@click.argument("clip_dir", type=click.Path(exists=True, path_type=Path))
-@click.option("--top-n", default=0, help="Only show top N clips (0 = all)")
-def rank(clip_dir: Path, top_n: int):
-    """Rank all video clips in a directory by visual excitement.
-
-    CLIP_DIR: Directory containing video clips to rank.
-    """
-    from .config import get_settings
-    from .ranker import score_clips
-
-    settings = get_settings()
-    if not settings.gemini_api_key:
-        raise click.ClickException(
-            "GEMINI_API_KEY is not set — required for `rank`/`score`."
-        )
-    clips = sorted(clip_dir.glob("*.mp4")) + sorted(clip_dir.glob("*.MP4"))
-    if not clips:
-        click.echo("No .mp4 files found.")
-        return
-
-    click.echo(f"Ranking {len(clips)} clips with {settings.gemini_model}...\n")
-    ranked = score_clips(clips, settings)
-
-    if top_n > 0:
-        ranked = ranked[:top_n]
-
-    click.echo(f"\n{'Rank':<5} {'Rating':<8} {'Tier':<14} {'File':<30} Description")
-    click.echo("-" * 100)
-    for i, (clip_path, clip_score) in enumerate(ranked, start=1):
-        click.echo(
-            f"{i:<5} {clip_score.excitement_rating:<8.1f} {clip_score.tier:<14} "
-            f"{clip_path.name:<30} {clip_score.description[:40]}"
-        )
 
 
 @main.command()
@@ -657,9 +519,7 @@ def process(date_folder: Path, offset: float, no_auto_sync: bool,
     # caffeinate so a missing file fails fast instead of after the user
     # has answered five recap questions. (FIT is also needed up-front so
     # the recap prompt has GPS context.)
-    fit_files = sorted(
-        list(date_folder.glob("*.fit")) + list(date_folder.glob("*.FIT"))
-    )
+    fit_files = _find_fits(date_folder)
     if not fit_files:
         raise click.ClickException("No .fit file found in the date folder.")
     if len(fit_files) > 1:
@@ -670,7 +530,7 @@ def process(date_folder: Path, offset: float, no_auto_sync: bool,
         )
     fit_path = fit_files[0]
 
-    mp4_files = list(date_folder.glob("*.MP4")) + list(date_folder.glob("*.mp4"))
+    mp4_files = _find_mp4s(date_folder)
     if not mp4_files:
         raise click.ClickException("No .MP4 files found in the date folder.")
 
@@ -712,10 +572,8 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
 
     # Discover files (`process` already preflighted and warned about
     # multiple FITs; sorted-first keeps the pick deterministic here too)
-    fit_files = sorted(
-        list(date_folder.glob("*.fit")) + list(date_folder.glob("*.FIT"))
-    )
-    mp4_files = list(date_folder.glob("*.MP4")) + list(date_folder.glob("*.mp4"))
+    fit_files = _find_fits(date_folder)
+    mp4_files = _find_mp4s(date_folder)
 
     if not fit_files:
         raise click.ClickException("No .fit file found in the date folder.")
@@ -1081,7 +939,7 @@ def review_ride(date_folder: Path, offset: float, no_auto_sync: bool,
     from .gpmf_sync import resolve_offset
     import webbrowser
 
-    fit_files = list(date_folder.glob("*.fit")) + list(date_folder.glob("*.FIT"))
+    fit_files = _find_fits(date_folder)
     if not fit_files:
         click.echo(f"No .fit file in {date_folder}")
         return
@@ -1347,7 +1205,7 @@ def compare_features(date_folder, strava_activity, skip_gemini):
     from .composer import ComposerConfig, generate_all_candidates, select_segments
 
     date_folder = Path(date_folder)
-    fit_files = list(date_folder.glob("*.fit")) + list(date_folder.glob("*.FIT"))
+    fit_files = _find_fits(date_folder)
     if not fit_files:
         click.echo("No FIT file found.")
         return
