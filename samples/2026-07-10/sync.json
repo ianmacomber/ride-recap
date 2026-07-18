@@ -1,0 +1,25 @@
+{
+  "offset_secs": -14.650500000000001,
+  "confidence": 1.0,
+  "method": "per-clip (n=16, spread=0.60s)",
+  "per_chapter": {
+    "GX010335.MP4": -14.8,
+    "GX010336.MP4": -14.7,
+    "GX010337.MP4": -14.6,
+    "GX010338.MP4": -15.101,
+    "GX010339.MP4": -15.001,
+    "GX010340.MP4": -14.801,
+    "GX010341.MP4": -14.601,
+    "GX010342.MP4": -14.601,
+    "GX010343.MP4": -15.1,
+    "GX010344.MP4": -15.101,
+    "GX010345.MP4": -14.601,
+    "GX010346.MP4": -14.5,
+    "GX010347.MP4": -14.5,
+    "GX010348.MP4": -14.6,
+    "GX010349.MP4": -14.501,
+    "GX010350.MP4": -14.901
+  },
+  "notes": "GX010332.MP4: insufficient GPS lock; GX010333.MP4: insufficient GPS lock; GX010334.MP4: insufficient GPS lock",
+  "detected_at": "2026-07-10T14:04:37.412989+00:00"
+}

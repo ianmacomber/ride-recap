@@ -1,0 +1,92 @@
+[
+  {
+    "clip_name": "GX010348.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 4.5,
+    "peak_offset": 0.45,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 3,
+      "subject": 5
+    },
+    "raw_sum": 20,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Squeezing through tight NYC traffic past buses and construction."
+  },
+  {
+    "clip_name": "GX010348.MP4",
+    "video_start": 60.0,
+    "video_end": 70.0,
+    "anchor_video_secs": 65.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 2
+    },
+    "raw_sum": 18,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Generic transit riding down a parkside street with flat light."
+  },
+  {
+    "clip_name": "GX010348.MP4",
+    "video_start": 120.0,
+    "video_end": 130.0,
+    "anchor_video_secs": 127.0,
+    "peak_offset": 0.7,
+    "rubric": {
+      "light": 6,
+      "composition": 5,
+      "motion": 5,
+      "scenery": 5,
+      "subject": 2
+    },
+    "raw_sum": 23,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Fast urban cruise under dramatic wispy clouds along Riverside Drive."
+  },
+  {
+    "clip_name": "GX010348.MP4",
+    "video_start": 155.0,
+    "video_end": 165.0,
+    "anchor_video_secs": 160.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 5,
+      "composition": 5,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 3
+    },
+    "raw_sum": 21,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Steady urban climb past parked cars under a bright cloud-swept sky."
+  },
+  {
+    "clip_name": "GX010348.MP4",
+    "video_start": 180.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 185.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 2
+    },
+    "raw_sum": 18,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Unremarkable transit footage cruising down a residential New York City street"
+  }
+]

@@ -1,0 +1,56 @@
+[
+  {
+    "clip_name": "GX010335.MP4",
+    "video_start": 0,
+    "video_end": 15.0,
+    "anchor_video_secs": 3.0,
+    "peak_offset": 0.2,
+    "rubric": {
+      "light": 6,
+      "composition": 6,
+      "motion": 4,
+      "scenery": 7,
+      "subject": 3
+    },
+    "raw_sum": 26,
+    "clip_type": "scenery",
+    "crop_x": 50,
+    "reason": "Morning cruise down Morningside Drive past Cathedral of Saint John the Divine."
+  },
+  {
+    "clip_name": "GX010335.MP4",
+    "video_start": 55.0,
+    "video_end": 130.0,
+    "anchor_video_secs": 73.75,
+    "peak_offset": 0.25,
+    "rubric": {
+      "light": 6,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 3
+    },
+    "raw_sum": 27,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Cruising the Riverside Drive Viaduct past Columbia's Manhattanville campus at sunrise."
+  },
+  {
+    "clip_name": "GX010335.MP4",
+    "video_start": 155.0,
+    "video_end": 215.0,
+    "anchor_video_secs": 209.0,
+    "peak_offset": 0.9,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 5,
+      "subject": 3
+    },
+    "raw_sum": 20,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Cruising past classic Riverside Drive apartment buildings in morning light."
+  }
+]

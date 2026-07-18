@@ -1,0 +1,110 @@
+[
+  {
+    "ride_time_secs": 351,
+    "ride_time_str": "5:51",
+    "type": "scenery",
+    "visual": 7,
+    "action": 5,
+    "scale_version": 2,
+    "must_include": false,
+    "notes": "pretty flowers",
+    "clip_name": "GX010333.MP4",
+    "video_secs": 29.0
+  },
+  {
+    "ride_time_secs": 1521,
+    "ride_time_str": "25:21",
+    "type": "scenery",
+    "visual": 7,
+    "action": 5,
+    "scale_version": 2,
+    "must_include": false,
+    "notes": "pretty view",
+    "clip_name": "GX010336.MP4",
+    "video_secs": 23.0
+  },
+  {
+    "ride_time_secs": 2591,
+    "ride_time_str": "43:11",
+    "type": "scenery",
+    "visual": 7,
+    "action": 5,
+    "scale_version": 2,
+    "must_include": true,
+    "notes": "George Washington bridge",
+    "clip_name": "GX010338.MP4",
+    "video_secs": 60.0
+  },
+  {
+    "ride_time_secs": 2913,
+    "ride_time_str": "48:33",
+    "type": "scenery",
+    "visual": 7,
+    "action": 8,
+    "scale_version": 2,
+    "must_include": true,
+    "notes": "hudson with speed",
+    "clip_name": "GX010339.MP4",
+    "video_secs": 24.0
+  },
+  {
+    "ride_time_secs": 4921,
+    "ride_time_str": "1:22:01",
+    "type": "scenery",
+    "visual": 7,
+    "action": 5,
+    "scale_version": 2,
+    "must_include": false,
+    "notes": "9W sign",
+    "clip_name": "GX010341.MP4",
+    "video_secs": 5.0
+  },
+  {
+    "ride_time_secs": 6347,
+    "ride_time_str": "1:45:47",
+    "type": "action",
+    "visual": 7,
+    "action": 8,
+    "scale_version": 2,
+    "must_include": true,
+    "notes": "Deer!",
+    "clip_name": "GX010344.MP4",
+    "video_secs": 2.0
+  },
+  {
+    "ride_time_secs": 6398,
+    "ride_time_str": "1:46:38",
+    "type": "climb",
+    "visual": 8,
+    "action": 8,
+    "scale_version": 2,
+    "must_include": false,
+    "notes": "climb",
+    "clip_name": "GX010344.MP4",
+    "video_secs": 53.0
+  },
+  {
+    "ride_time_secs": 9202,
+    "ride_time_str": "2:33:22",
+    "type": "urban",
+    "visual": 8,
+    "action": 5,
+    "scale_version": 2,
+    "must_include": true,
+    "notes": "bridge",
+    "clip_name": "GX010346.MP4",
+    "video_secs": 1.0
+  },
+  {
+    "ride_time_secs": 11253,
+    "ride_time_str": "3:07:33",
+    "type": "urban",
+    "visual": 8,
+    "action": 5,
+    "scale_version": 2,
+    "must_include": true,
+    "notes": "hudson yards",
+    "clip_name": "GX010350.MP4",
+    "video_secs": 2.0
+  }
+]

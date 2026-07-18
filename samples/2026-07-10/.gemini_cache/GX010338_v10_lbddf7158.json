@@ -1,0 +1,110 @@
+[
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 0,
+    "video_end": 15.0,
+    "anchor_video_secs": 6.0,
+    "peak_offset": 0.4,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 6,
+      "scenery": 6,
+      "subject": 3
+    },
+    "raw_sum": 29,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "Sun-drenched solo descent down the tree-lined Palisades cliffside road."
+  },
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 35.0,
+    "video_end": 45.0,
+    "anchor_video_secs": 43.0,
+    "peak_offset": 0.8,
+    "rubric": {
+      "light": 7,
+      "composition": 8,
+      "motion": 5,
+      "scenery": 9,
+      "subject": 7
+    },
+    "raw_sum": 36,
+    "clip_type": "landmark",
+    "crop_x": 50,
+    "reason": "Iconic George Washington Bridge reveal climbing up tree-lined River Road."
+  },
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 55.0,
+    "video_end": 85.0,
+    "anchor_video_secs": 83.5,
+    "peak_offset": 0.95,
+    "rubric": {
+      "light": 8,
+      "composition": 8,
+      "motion": 5,
+      "scenery": 9,
+      "subject": 7
+    },
+    "raw_sum": 37,
+    "clip_type": "landmark",
+    "crop_x": 50,
+    "reason": "Cruising under the massive George Washington Bridge with golden hour flare."
+  },
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 105.0,
+    "video_end": 130.0,
+    "anchor_video_secs": 110.0,
+    "peak_offset": 0.2,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 6,
+      "subject": 3
+    },
+    "raw_sum": 27,
+    "clip_type": "scenery",
+    "crop_x": 50,
+    "reason": "Scenic morning cruise along the tree-lined Palisades cliffs with beautiful dappled light."
+  },
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 135.0,
+    "video_end": 145.0,
+    "anchor_video_secs": 143.0,
+    "peak_offset": 0.8,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 4
+    },
+    "raw_sum": 30,
+    "clip_type": "scenery",
+    "crop_x": 50,
+    "reason": "Scenic morning climb past the dramatic Palisades cliffs on River Road."
+  },
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 180.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 188.0,
+    "peak_offset": 0.8,
+    "rubric": {
+      "light": 6,
+      "composition": 4,
+      "motion": 5,
+      "scenery": 5,
+      "subject": 2
+    },
+    "raw_sum": 22,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Cruising through dappled morning light on a quiet, wooded park road."
+  }
+]

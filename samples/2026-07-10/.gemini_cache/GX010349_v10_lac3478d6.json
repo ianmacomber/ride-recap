@@ -1,0 +1,20 @@
+[
+  {
+    "clip_name": "GX010349.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 1.0,
+    "peak_offset": 0.1,
+    "rubric": {
+      "light": 5,
+      "composition": 5,
+      "motion": 4,
+      "scenery": 6,
+      "subject": 4
+    },
+    "raw_sum": 24,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Cruising Hudson River Greenway past Hudson Yards and NY Waterway bus"
+  }
+]

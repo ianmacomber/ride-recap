@@ -1,0 +1,20 @@
+[
+  {
+    "clip_name": "GX010341.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 5.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 3,
+      "motion": 3,
+      "scenery": 4,
+      "subject": 2
+    },
+    "raw_sum": 16,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Unremarkable transit footage on a flat, empty road bordered by trees."
+  }
+]

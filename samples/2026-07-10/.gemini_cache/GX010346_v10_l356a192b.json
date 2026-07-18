@@ -1,0 +1,20 @@
+[
+  {
+    "clip_name": "GX010346.MP4",
+    "video_start": 0,
+    "video_end": 5.0,
+    "anchor_video_secs": 2.5,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 6,
+      "composition": 8,
+      "motion": 5,
+      "scenery": 9,
+      "subject": 6
+    },
+    "raw_sum": 34,
+    "clip_type": "landmark",
+    "crop_x": 50,
+    "reason": "Cruising toward the iconic George Washington Bridge tower on a sunny day."
+  }
+]

@@ -1,0 +1,1306 @@
+[
+  {
+    "stable_id": "GX010332@5",
+    "clip_name": "GX010332.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 5.0,
+    "ride_time_secs": 42.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 4.0,
+    "rubric": {
+      "light": 6,
+      "composition": 5,
+      "motion": 4,
+      "scenery": 5,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Scenic but empty transit footage along a tree-lined path at sunset.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010332@41",
+    "clip_name": "GX010332.MP4",
+    "video_start": 25.0,
+    "video_end": 45.0,
+    "anchor_video_secs": 41.0,
+    "ride_time_secs": 78.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 4.75,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 4,
+      "scenery": 6,
+      "subject": 3
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Golden sunset cruise northbound on the scenic Hudson River Greenway.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010333@29",
+    "clip_name": "GX010333.MP4",
+    "video_start": 0,
+    "video_end": 45.0,
+    "anchor_video_secs": 29.0,
+    "ride_time_secs": 351,
+    "sources": [
+      "gemini",
+      "label"
+    ],
+    "score": 6.75,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 5
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "pretty flowers + Golden hour cruise along NYC's West Side path past modern skyline",
+    "type": "scenery",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010334@11",
+    "clip_name": "GX010334.MP4",
+    "video_start": 0,
+    "video_end": 15.0,
+    "anchor_video_secs": 11.25,
+    "ride_time_secs": 769.5995,
+    "sources": [
+      "gemini"
+    ],
+    "score": 6.5,
+    "rubric": {
+      "light": 5,
+      "composition": 7,
+      "motion": 4,
+      "scenery": 8,
+      "subject": 7
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Approach to the iconic Soldiers' and Sailors' Monument on Riverside Drive",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010334@80",
+    "clip_name": "GX010334.MP4",
+    "video_start": 60.0,
+    "video_end": 85.0,
+    "anchor_video_secs": 80.0,
+    "ride_time_secs": 838.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 4.75,
+    "rubric": {
+      "light": 5,
+      "composition": 5,
+      "motion": 6,
+      "scenery": 5,
+      "subject": 3
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Fast morning descent along Central Park West past classic pre-war architecture.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010334@125",
+    "clip_name": "GX010334.MP4",
+    "video_start": 120.0,
+    "video_end": 145.0,
+    "anchor_video_secs": 125.0,
+    "ride_time_secs": 883.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 3.25,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 3,
+      "scenery": 4,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Unremarkable transit footage riding past parked cars on an urban climb.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010334@160",
+    "clip_name": "GX010334.MP4",
+    "video_start": 155.0,
+    "video_end": 165.0,
+    "anchor_video_secs": 160.0,
+    "ride_time_secs": 918.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 2.75,
+    "rubric": {
+      "light": 4,
+      "composition": 3,
+      "motion": 3,
+      "scenery": 3,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Ordinary transit footage riding past parked cars under tree canopy",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010335@3",
+    "clip_name": "GX010335.MP4",
+    "video_start": 0,
+    "video_end": 15.0,
+    "anchor_video_secs": 3.0,
+    "ride_time_secs": 1177.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 5.0,
+    "rubric": {
+      "light": 6,
+      "composition": 6,
+      "motion": 4,
+      "scenery": 7,
+      "subject": 3
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Morning cruise down Morningside Drive past Cathedral of Saint John the Divine.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010335@74",
+    "clip_name": "GX010335.MP4",
+    "video_start": 55.0,
+    "video_end": 130.0,
+    "anchor_video_secs": 73.75,
+    "ride_time_secs": 1248.0995,
+    "sources": [
+      "gemini"
+    ],
+    "score": 5.25,
+    "rubric": {
+      "light": 6,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 3
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Cruising the Riverside Drive Viaduct past Columbia's Manhattanville campus at sunrise.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010335@209",
+    "clip_name": "GX010335.MP4",
+    "video_start": 155.0,
+    "video_end": 215.0,
+    "anchor_video_secs": 209.0,
+    "ride_time_secs": 1383.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 4.0,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 5,
+      "subject": 3
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Cruising past classic Riverside Drive apartment buildings in morning light.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010336@23",
+    "clip_name": "GX010336.MP4",
+    "video_start": 0,
+    "video_end": 55.0,
+    "anchor_video_secs": 23.0,
+    "ride_time_secs": 1521,
+    "sources": [
+      "gemini",
+      "label"
+    ],
+    "score": 7.5,
+    "rubric": {
+      "light": 6,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 8,
+      "subject": 6
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "pretty view + George Washington Bridge comes into view under soft morning light. + Passing close to MTA city buses on an urban bridge approach.",
+    "type": "scenery",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010337@4",
+    "clip_name": "GX010337.MP4",
+    "video_start": 0,
+    "video_end": 25.0,
+    "anchor_video_secs": 3.75,
+    "ride_time_secs": 1922.0995,
+    "sources": [
+      "gemini"
+    ],
+    "score": 5.75,
+    "rubric": {
+      "light": 6,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 4
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Climbing the iconic GWB north ramp with the bridge tower in view.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010338@6",
+    "clip_name": "GX010338.MP4",
+    "video_start": 0,
+    "video_end": 15.0,
+    "anchor_video_secs": 6.0,
+    "ride_time_secs": 2522.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 5.5,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 6,
+      "scenery": 6,
+      "subject": 3
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Sun-drenched solo descent down the tree-lined Palisades cliffside road.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010338@60",
+    "clip_name": "GX010338.MP4",
+    "video_start": 35.0,
+    "video_end": 130.0,
+    "anchor_video_secs": 60.0,
+    "ride_time_secs": 2591,
+    "sources": [
+      "gemini",
+      "label"
+    ],
+    "score": 8.25,
+    "rubric": {
+      "light": 7,
+      "composition": 8,
+      "motion": 5,
+      "scenery": 9,
+      "subject": 7
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "George Washington bridge + Iconic George Washington Bridge reveal climbing up tree-lined River Road. + Cruising under the massive George Washington Bridge with golden hour flare. + Scenic morning cruise along the tree-lined Palisades cliffs with beautiful dappled light.",
+    "type": "scenery",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010338@143",
+    "clip_name": "GX010338.MP4",
+    "video_start": 135.0,
+    "video_end": 145.0,
+    "anchor_video_secs": 143.0,
+    "ride_time_secs": 2659.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 5.75,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 4
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Scenic morning climb past the dramatic Palisades cliffs on River Road.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010338@188",
+    "clip_name": "GX010338.MP4",
+    "video_start": 180.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 188.0,
+    "ride_time_secs": 2704.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 4.0,
+    "rubric": {
+      "light": 6,
+      "composition": 4,
+      "motion": 5,
+      "scenery": 5,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Cruising through dappled morning light on a quiet, wooded park road.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010339@24",
+    "clip_name": "GX010339.MP4",
+    "video_start": 0,
+    "video_end": 25.5,
+    "anchor_video_secs": 24.0,
+    "ride_time_secs": 2913,
+    "sources": [
+      "gemini",
+      "label"
+    ],
+    "score": 8.5,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 8,
+      "scenery": 8,
+      "subject": 7
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "hudson with speed + Fast River Road descent opening to beautiful Hudson River views.",
+    "type": "scenery",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010339@123",
+    "clip_name": "GX010339.MP4",
+    "video_start": 35.0,
+    "video_end": 195.0,
+    "anchor_video_secs": 123.0,
+    "ride_time_secs": 2997.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 5.75,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 4
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Climbing the historic brick road of Fort Tryon Park under dappled sunlight.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010339@251",
+    "clip_name": "GX010339.MP4",
+    "video_start": 205.0,
+    "video_end": 265.0,
+    "anchor_video_secs": 250.6505,
+    "ride_time_secs": 3125.0,
+    "sources": [
+      "gemini",
+      "telemetry"
+    ],
+    "score": 7.5,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 8,
+      "scenery": 7,
+      "subject": 4
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "speed_spike: 17 (descent over crest) + Dynamic high-speed descent down River Road with beautiful dappled morning light.",
+    "type": "speed_spike",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010340@16",
+    "clip_name": "GX010340.MP4",
+    "video_start": 0,
+    "video_end": 40.99095,
+    "anchor_video_secs": 16.39638,
+    "ride_time_secs": 4309.74588,
+    "sources": [
+      "gemini"
+    ],
+    "score": 5.0,
+    "rubric": {
+      "light": 6,
+      "composition": 7,
+      "motion": 3,
+      "scenery": 6,
+      "subject": 4
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Threshold climbing effort on a quiet tree-lined park road with stone walls.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010340@39",
+    "clip_name": "GX010340.MP4",
+    "video_start": 37.1505,
+    "video_end": 40.1505,
+    "anchor_video_secs": 38.6505,
+    "ride_time_secs": 4332.0,
+    "sources": [
+      "telemetry"
+    ],
+    "score": 1.398666244643295,
+    "rubric": {},
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "climb: 29 (merged: climb + climb)",
+    "type": "climb",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010341@5",
+    "clip_name": "GX010341.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 5.0,
+    "ride_time_secs": 4921,
+    "sources": [
+      "gemini",
+      "label"
+    ],
+    "score": 3.0,
+    "rubric": {
+      "light": 4,
+      "composition": 3,
+      "motion": 3,
+      "scenery": 4,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "9W sign + Unremarkable transit footage on a flat, empty road bordered by trees.",
+    "type": "scenery",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010342@4",
+    "clip_name": "GX010342.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 4.0,
+    "ride_time_secs": 5257.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 4.5,
+    "rubric": {
+      "light": 4,
+      "composition": 5,
+      "motion": 6,
+      "scenery": 4,
+      "subject": 3
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "High-speed descent on Route 9W past a Share the Road sign",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010342@43",
+    "clip_name": "GX010342.MP4",
+    "video_start": 35.0,
+    "video_end": 70.0,
+    "anchor_video_secs": 43.0,
+    "ride_time_secs": 5296.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 3.75,
+    "rubric": {
+      "light": 5,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 3
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Transit clip on open road as box truck pulls away ahead",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010342@102",
+    "clip_name": "GX010342.MP4",
+    "video_start": 95.0,
+    "video_end": 130.0,
+    "anchor_video_secs": 102.0,
+    "ride_time_secs": 5355.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 6.25,
+    "rubric": {
+      "light": 6,
+      "composition": 7,
+      "motion": 8,
+      "scenery": 5,
+      "subject": 5
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "High-speed descent on Route 9W, carving corners at over forty mph.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010342@120",
+    "clip_name": "GX010342.MP4",
+    "video_start": 118.1505,
+    "video_end": 121.1505,
+    "anchor_video_secs": 119.6505,
+    "ride_time_secs": 5373.0,
+    "sources": [
+      "telemetry"
+    ],
+    "score": 3.0,
+    "rubric": {},
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "speed_spike: 19 ()",
+    "type": "speed_spike",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010342@157",
+    "clip_name": "GX010342.MP4",
+    "video_start": 155.0,
+    "video_end": 165.0,
+    "anchor_video_secs": 157.0,
+    "ride_time_secs": 5410.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 3.0,
+    "rubric": {
+      "light": 4,
+      "composition": 3,
+      "motion": 4,
+      "scenery": 3,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Passed by commercial trucks on a generic wooded road.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010342@184",
+    "clip_name": "GX010342.MP4",
+    "video_start": 180.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 184.0,
+    "ride_time_secs": 5437.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 2.75,
+    "rubric": {
+      "light": 4,
+      "composition": 3,
+      "motion": 3,
+      "scenery": 3,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Low-intensity cruise on an empty suburban road with generic wooded scenery",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010343@5",
+    "clip_name": "GX010343.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 5.0,
+    "ride_time_secs": 6195.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 2.75,
+    "rubric": {
+      "light": 4,
+      "composition": 3,
+      "motion": 3,
+      "scenery": 3,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Generic suburban transit riding past oncoming and parked cars",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010343@56",
+    "clip_name": "GX010343.MP4",
+    "video_start": 45.0,
+    "video_end": 70.0,
+    "anchor_video_secs": 56.25,
+    "ride_time_secs": 6246.5995,
+    "sources": [
+      "gemini"
+    ],
+    "score": 3.25,
+    "rubric": {
+      "light": 6,
+      "composition": 4,
+      "motion": 3,
+      "scenery": 4,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Pleasant transit ride along tree-lined road with bright morning sun flare",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010343@81",
+    "clip_name": "GX010343.MP4",
+    "video_start": 75.0,
+    "video_end": 85.0,
+    "anchor_video_secs": 81.0,
+    "ride_time_secs": 6271.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 5.25,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 6,
+      "subject": 4
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Cruising past a historic white church with warm morning sun flaring.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010344@2",
+    "clip_name": "GX010344.MP4",
+    "video_start": 0.5,
+    "video_end": 25.0,
+    "anchor_video_secs": 2.0,
+    "ride_time_secs": 6347,
+    "sources": [
+      "gemini",
+      "label"
+    ],
+    "score": 3.75,
+    "rubric": {
+      "light": 6,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 3
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Deer! + Anaerobic climb up steep, cracked road with sun filtering through trees",
+    "type": "action",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010344@53",
+    "clip_name": "GX010344.MP4",
+    "video_start": 45.0,
+    "video_end": 115.0,
+    "anchor_video_secs": 53.0,
+    "ride_time_secs": 6398,
+    "sources": [
+      "gemini",
+      "label",
+      "telemetry"
+    ],
+    "score": 5.35,
+    "rubric": {
+      "light": 4,
+      "composition": 5,
+      "motion": 4,
+      "scenery": 6,
+      "subject": 4
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "climb + Steep climb up River Road past Palisades rock faces at threshold effort. + High-power anaerobic climb up a rugged, tree-lined historic road. + climb: 31 (merged: climb + climb) + Steep anaerobic climb up a quiet, tree-framed road with stone walls.",
+    "type": "climb",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010344@125",
+    "clip_name": "GX010344.MP4",
+    "video_start": 120.0,
+    "video_end": 130.0,
+    "anchor_video_secs": 125.0,
+    "ride_time_secs": 6455.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 3.5,
+    "rubric": {
+      "light": 5,
+      "composition": 4,
+      "motion": 3,
+      "scenery": 4,
+      "subject": 3
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Solo climb up a quiet, tree-shaded hill at high power.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010344@176",
+    "clip_name": "GX010344.MP4",
+    "video_start": 175.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 176.5,
+    "ride_time_secs": 6506.8495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 3.25,
+    "rubric": {
+      "light": 5,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 3,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Unremarkable transit footage on a generic park access road.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010345@5",
+    "clip_name": "GX010345.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 5.0,
+    "ride_time_secs": 7211.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 2.75,
+    "rubric": {
+      "light": 4,
+      "composition": 3,
+      "motion": 3,
+      "scenery": 3,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Generic transit footage cruising along tree-lined road with no subject.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010345@61",
+    "clip_name": "GX010345.MP4",
+    "video_start": 60.0,
+    "video_end": 70.0,
+    "anchor_video_secs": 61.0,
+    "ride_time_secs": 7267.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 3.5,
+    "rubric": {
+      "light": 5,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Generic transit footage cruising along a tree-lined road.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010346@1",
+    "clip_name": "GX010346.MP4",
+    "video_start": 0,
+    "video_end": 5.0,
+    "anchor_video_secs": 1.0,
+    "ride_time_secs": 9202,
+    "sources": [
+      "gemini",
+      "label"
+    ],
+    "score": 8.0,
+    "rubric": {
+      "light": 6,
+      "composition": 8,
+      "motion": 5,
+      "scenery": 9,
+      "subject": 6
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "bridge + Cruising toward the iconic George Washington Bridge tower on a sunny day.",
+    "type": "urban",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010348@4",
+    "clip_name": "GX010348.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 4.5,
+    "ride_time_secs": 9536.8495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 4.0,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 3,
+      "subject": 5
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Squeezing through tight NYC traffic past buses and construction.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010348@65",
+    "clip_name": "GX010348.MP4",
+    "video_start": 60.0,
+    "video_end": 70.0,
+    "anchor_video_secs": 65.0,
+    "ride_time_secs": 9597.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 3.5,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Generic transit riding down a parkside street with flat light.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010348@127",
+    "clip_name": "GX010348.MP4",
+    "video_start": 120.0,
+    "video_end": 130.0,
+    "anchor_video_secs": 127.0,
+    "ride_time_secs": 9659.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 4.25,
+    "rubric": {
+      "light": 6,
+      "composition": 5,
+      "motion": 5,
+      "scenery": 5,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Fast urban cruise under dramatic wispy clouds along Riverside Drive.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010348@160",
+    "clip_name": "GX010348.MP4",
+    "video_start": 155.0,
+    "video_end": 165.0,
+    "anchor_video_secs": 160.0,
+    "ride_time_secs": 9692.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 4.0,
+    "rubric": {
+      "light": 5,
+      "composition": 5,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 3
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Steady urban climb past parked cars under a bright cloud-swept sky.",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010348@185",
+    "clip_name": "GX010348.MP4",
+    "video_start": 180.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 185.0,
+    "ride_time_secs": 9717.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 3.5,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 2
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Unremarkable transit footage cruising down a residential New York City street",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "pending",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010349@1",
+    "clip_name": "GX010349.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 1.0,
+    "ride_time_secs": 11133.3495,
+    "sources": [
+      "gemini"
+    ],
+    "score": 4.75,
+    "rubric": {
+      "light": 5,
+      "composition": 5,
+      "motion": 4,
+      "scenery": 6,
+      "subject": 4
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "Cruising Hudson River Greenway past Hudson Yards and NY Waterway bus",
+    "type": "gemini_vision",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  },
+  {
+    "stable_id": "GX010350@2",
+    "clip_name": "GX010350.MP4",
+    "video_start": 0,
+    "video_end": 85.0,
+    "anchor_video_secs": 2.0,
+    "ride_time_secs": 11253,
+    "sources": [
+      "gemini",
+      "label"
+    ],
+    "score": 7.0,
+    "rubric": {
+      "light": 5,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 8,
+      "subject": 4
+    },
+    "telemetry_features": {},
+    "portrait_crop_bias": 0.0,
+    "final_trim_secs": 3.0,
+    "notes": "hudson yards + Cruising past towering Hudson Yards skyscrapers under bright New York skies. + Cruising past modern skyscrapers of Hudson Yards and the High Line.",
+    "type": "urban",
+    "star_count": 0,
+    "status": "auto",
+    "rating": 0,
+    "user_anchor_override": null,
+    "user_in_out": null
+  }
+]

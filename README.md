@@ -130,6 +130,19 @@ That command runs end to end. The autonomous output is usually good.
 
 ---
 
+## No GoPro? Use mine
+
+[`samples/2026-07-10/`](samples/README.md) is a real ride — 44.7 miles up 9W
+and back — with my hand labels, the Gemini baseline ratings, and the sync
+sidecars committed right here. That's enough to reproduce the scoring
+comparison without downloading any video or holding a Gemini key. The footage
+itself lives on Hugging Face as
+[`iandmacomber/ride-recap-sample-2026-07-10`](https://huggingface.co/datasets/iandmacomber/ride-recap-sample-2026-07-10),
+tiered so you can pull 1 MB, 6 GB, or the whole 14 GB depending on what you're
+testing. The samples README has the details.
+
+---
+
 ## Degrading gracefully
 
 Only ffmpeg, a FIT file, and at least one `.MP4` are actually required. Everything else turns itself off politely:

@@ -1,0 +1,56 @@
+[
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 0,
+    "video_end": 25.0,
+    "anchor_video_secs": 22.5,
+    "peak_offset": 0.9,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 8,
+      "scenery": 8,
+      "subject": 7
+    },
+    "raw_sum": 37,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "Fast River Road descent opening to beautiful Hudson River views."
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 35.0,
+    "video_end": 195.0,
+    "anchor_video_secs": 123.0,
+    "peak_offset": 0.55,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 4
+    },
+    "raw_sum": 30,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Climbing the historic brick road of Fort Tryon Park under dappled sunlight."
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 205.0,
+    "video_end": 265.0,
+    "anchor_video_secs": 253.0,
+    "peak_offset": 0.8,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 8,
+      "scenery": 7,
+      "subject": 4
+    },
+    "raw_sum": 33,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "Dynamic high-speed descent down River Road with beautiful dappled morning light."
+  }
+]

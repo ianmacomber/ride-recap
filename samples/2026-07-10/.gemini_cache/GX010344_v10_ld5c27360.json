@@ -1,0 +1,128 @@
+[
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 0,
+    "video_end": 7.0,
+    "anchor_video_secs": 2.8000000000000003,
+    "peak_offset": 0.4,
+    "rubric": {
+      "light": 5,
+      "composition": 6,
+      "motion": 4,
+      "scenery": 5,
+      "subject": 8
+    },
+    "raw_sum": 28,
+    "clip_type": "incident",
+    "crop_x": 50,
+    "reason": "Steep climb with a close encounter passing a deer roadside."
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 15.0,
+    "video_end": 25.0,
+    "anchor_video_secs": 16.0,
+    "peak_offset": 0.1,
+    "rubric": {
+      "light": 6,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 3
+    },
+    "raw_sum": 21,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Anaerobic climb up steep, cracked road with sun filtering through trees"
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 45.0,
+    "video_end": 70.0,
+    "anchor_video_secs": 65.0,
+    "peak_offset": 0.8,
+    "rubric": {
+      "light": 4,
+      "composition": 5,
+      "motion": 4,
+      "scenery": 6,
+      "subject": 4
+    },
+    "raw_sum": 23,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Steep climb up River Road past Palisades rock faces at threshold effort."
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 75.0,
+    "video_end": 85.0,
+    "anchor_video_secs": 80.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 5,
+      "composition": 5,
+      "motion": 4,
+      "scenery": 5,
+      "subject": 4
+    },
+    "raw_sum": 23,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "High-power anaerobic climb up a rugged, tree-lined historic road."
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 95.6505,
+    "video_end": 115.0,
+    "anchor_video_secs": 105.32525,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 6,
+      "composition": 5,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 3
+    },
+    "raw_sum": 22,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Steep anaerobic climb up a quiet, tree-framed road with stone walls."
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 120.0,
+    "video_end": 130.0,
+    "anchor_video_secs": 125.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 5,
+      "composition": 4,
+      "motion": 3,
+      "scenery": 4,
+      "subject": 3
+    },
+    "raw_sum": 19,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Solo climb up a quiet, tree-shaded hill at high power."
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 175.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 176.5,
+    "peak_offset": 0.1,
+    "rubric": {
+      "light": 5,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 3,
+      "subject": 2
+    },
+    "raw_sum": 18,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Unremarkable transit footage on a generic park access road."
+  }
+]

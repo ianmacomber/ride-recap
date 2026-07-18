@@ -1,0 +1,20 @@
+[
+  {
+    "clip_name": "GX010337.MP4",
+    "video_start": 0,
+    "video_end": 25.0,
+    "anchor_video_secs": 3.75,
+    "peak_offset": 0.15,
+    "rubric": {
+      "light": 6,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 4
+    },
+    "raw_sum": 29,
+    "clip_type": "landmark",
+    "crop_x": 50,
+    "reason": "Climbing the iconic GWB north ramp with the bridge tower in view."
+  }
+]

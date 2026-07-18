@@ -1,0 +1,92 @@
+[
+  {
+    "clip_name": "GX010334.MP4",
+    "video_start": 0,
+    "video_end": 15.0,
+    "anchor_video_secs": 11.25,
+    "peak_offset": 0.75,
+    "rubric": {
+      "light": 5,
+      "composition": 7,
+      "motion": 4,
+      "scenery": 8,
+      "subject": 7
+    },
+    "raw_sum": 31,
+    "clip_type": "landmark",
+    "crop_x": 50,
+    "reason": "Approach to the iconic Soldiers' and Sailors' Monument on Riverside Drive"
+  },
+  {
+    "clip_name": "GX010334.MP4",
+    "video_start": 60.0,
+    "video_end": 85.0,
+    "anchor_video_secs": 80.0,
+    "peak_offset": 0.8,
+    "rubric": {
+      "light": 5,
+      "composition": 5,
+      "motion": 6,
+      "scenery": 5,
+      "subject": 3
+    },
+    "raw_sum": 24,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "Fast morning descent along Central Park West past classic pre-war architecture."
+  },
+  {
+    "clip_name": "GX010334.MP4",
+    "video_start": 120.0,
+    "video_end": 130.0,
+    "anchor_video_secs": 125.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 3,
+      "scenery": 4,
+      "subject": 2
+    },
+    "raw_sum": 17,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Unremarkable transit footage riding past parked cars on an urban climb."
+  },
+  {
+    "clip_name": "GX010334.MP4",
+    "video_start": 135.0,
+    "video_end": 145.0,
+    "anchor_video_secs": 140.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 3,
+      "scenery": 4,
+      "subject": 2
+    },
+    "raw_sum": 17,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Unremarkable transition ride past parked cars under flat lighting."
+  },
+  {
+    "clip_name": "GX010334.MP4",
+    "video_start": 155.0,
+    "video_end": 165.0,
+    "anchor_video_secs": 160.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 3,
+      "motion": 3,
+      "scenery": 3,
+      "subject": 2
+    },
+    "raw_sum": 15,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Ordinary transit footage riding past parked cars under tree canopy"
+  }
+]

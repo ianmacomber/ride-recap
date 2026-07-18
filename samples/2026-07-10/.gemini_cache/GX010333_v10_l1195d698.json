@@ -1,0 +1,38 @@
+[
+  {
+    "clip_name": "GX010333.MP4",
+    "video_start": 0,
+    "video_end": 34.0,
+    "anchor_video_secs": 20.4,
+    "peak_offset": 0.6,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 5
+    },
+    "raw_sum": 30,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Golden hour cruise along NYC's West Side path past modern skyline"
+  },
+  {
+    "clip_name": "GX010333.MP4",
+    "video_start": 35.0,
+    "video_end": 45.0,
+    "anchor_video_secs": 35.0,
+    "peak_offset": 0.0,
+    "rubric": {
+      "light": 3,
+      "composition": 3,
+      "motion": 4,
+      "scenery": 2,
+      "subject": 2
+    },
+    "raw_sum": 14,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Entering a dark underpass under the West Side Highway deck."
+  }
+]

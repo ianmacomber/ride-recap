@@ -1,0 +1,110 @@
+[
+  {
+    "clip_name": "GX010342.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 4.0,
+    "peak_offset": 0.4,
+    "rubric": {
+      "light": 4,
+      "composition": 5,
+      "motion": 6,
+      "scenery": 4,
+      "subject": 3
+    },
+    "raw_sum": 22,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "High-speed descent on Route 9W past a Share the Road sign"
+  },
+  {
+    "clip_name": "GX010342.MP4",
+    "video_start": 35.0,
+    "video_end": 45.0,
+    "anchor_video_secs": 43.0,
+    "peak_offset": 0.8,
+    "rubric": {
+      "light": 5,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 3
+    },
+    "raw_sum": 20,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Transit clip on open road as box truck pulls away ahead"
+  },
+  {
+    "clip_name": "GX010342.MP4",
+    "video_start": 60.0,
+    "video_end": 70.0,
+    "anchor_video_secs": 61.0,
+    "peak_offset": 0.1,
+    "rubric": {
+      "light": 5,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 2
+    },
+    "raw_sum": 19,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Quiet transit roll on Route 9W with empty road and greenery."
+  },
+  {
+    "clip_name": "GX010342.MP4",
+    "video_start": 95.0,
+    "video_end": 130.0,
+    "anchor_video_secs": 102.0,
+    "peak_offset": 0.2,
+    "rubric": {
+      "light": 6,
+      "composition": 7,
+      "motion": 8,
+      "scenery": 5,
+      "subject": 5
+    },
+    "raw_sum": 31,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "High-speed descent on Route 9W, carving corners at over forty mph."
+  },
+  {
+    "clip_name": "GX010342.MP4",
+    "video_start": 155.0,
+    "video_end": 165.0,
+    "anchor_video_secs": 157.0,
+    "peak_offset": 0.2,
+    "rubric": {
+      "light": 4,
+      "composition": 3,
+      "motion": 4,
+      "scenery": 3,
+      "subject": 2
+    },
+    "raw_sum": 16,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Passed by commercial trucks on a generic wooded road."
+  },
+  {
+    "clip_name": "GX010342.MP4",
+    "video_start": 180.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 184.0,
+    "peak_offset": 0.4,
+    "rubric": {
+      "light": 4,
+      "composition": 3,
+      "motion": 3,
+      "scenery": 3,
+      "subject": 2
+    },
+    "raw_sum": 15,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Low-intensity cruise on an empty suburban road with generic wooded scenery"
+  }
+]

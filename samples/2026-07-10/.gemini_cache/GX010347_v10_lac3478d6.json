@@ -1,0 +1,20 @@
+[
+  {
+    "clip_name": "GX010347.MP4",
+    "video_start": 0,
+    "video_end": 15.0,
+    "anchor_video_secs": 12.75,
+    "peak_offset": 0.85,
+    "rubric": {
+      "light": 5,
+      "composition": 6,
+      "motion": 3,
+      "scenery": 4,
+      "subject": 3
+    },
+    "raw_sum": 21,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Rider exits the dark GWB Bus Station underpass into bright city streets."
+  }
+]

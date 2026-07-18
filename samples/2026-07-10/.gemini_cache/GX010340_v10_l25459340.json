@@ -1,0 +1,20 @@
+[
+  {
+    "clip_name": "GX010340.MP4",
+    "video_start": 0,
+    "video_end": 40.99095,
+    "anchor_video_secs": 16.39638,
+    "peak_offset": 0.4,
+    "rubric": {
+      "light": 6,
+      "composition": 7,
+      "motion": 3,
+      "scenery": 6,
+      "subject": 4
+    },
+    "raw_sum": 26,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Threshold climbing effort on a quiet tree-lined park road with stone walls."
+  }
+]
