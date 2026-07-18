@@ -139,7 +139,19 @@ comparison without downloading any video or holding a Gemini key. The footage
 itself lives on Hugging Face as
 [`iandmacomber/ride-recap-sample-2026-07-10`](https://huggingface.co/datasets/iandmacomber/ride-recap-sample-2026-07-10),
 tiered so you can pull 1 MB, 6 GB, or the whole 14 GB depending on what you're
-testing. The samples README has the details.
+testing:
+
+```bash
+pip install huggingface_hub
+hf download iandmacomber/ride-recap-sample-2026-07-10 --repo-type dataset \
+    --include "clips/*" "sidecars/*" --local-dir hf_ride
+```
+
+That's the 6 GB tier — the 8 chapters my hand labels reference, which is the
+one issue #2 needs. Swap `clips` for `full` for the whole ride. The
+[samples README](samples/README.md) has the couple of `mv` commands that turn
+the download into a `data/raw/2026-07-10/` folder every command above runs
+against verbatim.
 
 ---
 
