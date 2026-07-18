@@ -1,48 +1,61 @@
 # ride-recap
 
-**Turn three hours of raw GoPro footage and a Garmin FIT file into a 30-second highlight reel with the telemetry burned in.**
+**TL;DR:** Turn hours of raw GoPro footage + a `.fit` file into a 60-second highlight reel with ride telemetry burned in. Every second of the ride is ranked and edited by a LLM. The whole thing costs about $0.04 per ride and takes 10 minutes.
+
+*Alternate **TL;DR:** How I managed to turn 3 hours of boring GoPro footage into 30 seconds of boring GoPro footage.*
 
 ![A frame from a finished landscape reel](assets/images/overlay-landscape.jpg)
 
-I ride ~3 hours most weekends, usually out of Manhattan and up 9W. By the end of a ride I have twenty-odd GoPro clips and one FIT file with per-second speed, power, heart rate, cadence, and GPS. Nobody wants to watch three hours of cycling footage — not even me. But somewhere in there are 30 good seconds.
+## Summary
 
-This finds them. One command, about ten minutes, roughly four cents of Gemini:
+I ride most weekends, usually out of Manhattan and up 9W. By the end of a ride I have hours of GoPro footage and one `.fit` file with per-second speed, power, heart rate, cadence, and GPS. Absolutely no one wants to watch 3 hours of being stuck behind Citibikes on West Side Highway. It's fun to look through past footage, identify the fun parts, and put together a narrative to remember. But since cycling is already time consuming, manually editing a highlight reel edit per ride is a nonstarter. So I built and open-sourced this repo.
+
+One command, about ten minutes, roughly four cents of `gemini-3.5-flash`:
 
 ```bash
 ride-recap process data/raw/2026-07-10/
 ```
 
-Out the other end: `highlight_landscape.mp4` (60s, 16:9) and `highlight_portrait.mp4` (30s, 9:16), clips always in ride order, HUD burned in.
+The outputs: `highlight_landscape.mp4` (60s, 16:9) and `highlight_portrait.mp4` (30s, 9:16). The clips are always in ride order with telemetry burned in.
 
-**▶ Watch a finished reel** (River Road to 9W Market):
+**▶ Click the image below to watch a finished highlight** (River Road to 9W Market):
 
 [![Watch a ride-recap reel on YouTube](https://img.youtube.com/vi/ZBrneOOYmG0/maxresdefault.jpg)](https://www.youtube.com/watch?v=ZBrneOOYmG0)
 
-There's a long write-up of how it works and everything I got wrong building it: **[Teaching LLMs Taste](https://iandmacomber.com/blog/gopro-garmin-gemini-ride-recap)**.
+Here's my long write-up of how it works and everything I got wrong building it: **[Teaching LLMs Taste](https://iandmacomber.com/blog/gopro-garmin-gemini-ride-recap)**.
 
 ---
 
-## The idea
-
-Three sensors that don't know about each other, fused into one chronological story.
+## The Architecture
 
 ![Pipeline architecture](assets/images/architecture.jpg)
 
-Four sources propose candidate moments independently — Garmin telemetry (power spikes, sprints, climbs), Strava (popular segments), a Gemini vision scan of the actual footage, and optional hand-labels. Fusion merges them, scores them, drops the boring ones, and hands ~90 candidates to a reviewer. You pick; it burns.
+We identify compelling moments from four separate sources:
 
-**The central bet is that telemetry alone can't find the good parts.** My first scorer flagged anything above 350W and produced sixty seconds of me grinding on flat, featureless roads. High wattage on a suburban straightaway looks identical to high wattage on the George Washington Bridge, and the Garmin can't tell the difference. Meanwhile the best moment of a ride is often this:
+1. Garmin telemetry via `.fit` file (speed, HR, power spikes, sprints, climbs)
+2. Strava via API (popular segments)
+3. Gemini vision scan + rating of individual frames
+4. (optional) hand-labels via Streamlit app
+
+Here's an example of one moment being scored across all sources:
 
 ![One moment, end to end](assets/images/moment-trace.jpg)
+  
+The fusion step works like this:
 
-139 watts. No spike, no sprint, no starred segment — to the power meter that moment does not exist. The vision scan caught it and it shipped as clip 3. That's the whole reason there's a model in the loop.
+1. “Must include” manual labels are picked first
+2. A Gemini LLM narrative pass picks 20 clips to best tell the story of the ride, boosting “cross-source agreements” (if a human label + telemetry + Strava + Gemini all agree that a clip is interesting)
+3. Greedy re-ranking with a crowding penalty to avoid clips too close to something already selected
+   1. First, a “quality” phase that picks best-first until the best remaining candidate is net-negative with crowding penalty
+   2. Second, a “coverage” fill that guarantees the exact clip count by placing the liveliest available clips into the biggest timeline holes.
 
-The corollary, learned the hard way when an 858W spike behind a delivery truck outranked a river-skyline climb: **the visual rubric is the score of record, and telemetry is a tiebreaker.** Telemetry-only candidates are capped at 3.0/10 as "visually blind."
+Generally, the visual rubric is the score of record, and telemetry is a tiebreaker.
 
 ---
 
 ## Setup
 
-**You need:** Python 3.11+, [ffmpeg](https://ffmpeg.org/download.html), and a Gemini API key. Everything else is optional.
+**You need:** Python 3.11+, [ffmpeg](https://ffmpeg.org/download.html), and a Gemini API key. You also need a road bike mounted with a GoPro and a Garmin.
 
 ```bash
 git clone https://github.com/ianmacomber/ride-recap.git
@@ -55,7 +68,7 @@ pip install -e ".[dev]"
 cp .env.example .env
 ```
 
-Then open `.env` and set two things:
+Then open `.env` and set three things:
 
 ```env
 GEMINI_API_KEY=your-key-here    # https://aistudio.google.com/apikey
@@ -64,7 +77,7 @@ FTP=240                          # ← YOUR functional threshold power
 MAX_HEART_RATE=196               # ← YOUR max heart rate
 ```
 
-**Set FTP and MAX_HEART_RATE.** They ship with my numbers and they are load-bearing, driving three things: the spike thresholds that decide what counts as a hard effort, the HUD's zone colors, and the power zones written into the Gemini prompt so the model knows whether 216W means "cruising" or "peak effort" *for you*. That last one is why they matter more than they look — Gemini once called a 216W park climb "peak effort" because it was guessing from raw numbers. Leave mine in and the pipeline will systematically misjudge your riding: too many candidates if your FTP is lower than mine, too few if it's higher. This is the one bit of config that isn't optional.
+**Set FTP and MAX_HEART_RATE.** These numbers drive three things: the spike thresholds that decide what counts as a hard effort, the HUD's zone colors, and the power zones written into the Gemini prompt so the model knows whether 216W means "cruising" or "peak effort" for you.
 
 Verify it runs:
 
@@ -98,7 +111,7 @@ Then:
 ride-recap process data/raw/2026-07-10/
 ```
 
-It'll ask five questions (start, destination, road, a saying, who you rode with — all with GPS-derived defaults, just hit Enter), sync the clocks, scan the footage, and open a Streamlit reviewer at `:8501` with 5-second preview clips.
+It'll ask five questions (start, destination, road, a saying, who you rode with, all with GPS-derived defaults, just hit Enter), sync the clocks, scan the footage, and open a Streamlit reviewer at `:8501` with 5-second preview clips.
 
 **`process` stops at the reviewer.** Pick your clips, then run the command it prints:
 
@@ -113,7 +126,7 @@ Or skip the human entirely:
 ride-recap process data/raw/2026-07-10/ --skip-review
 ```
 
-That's the one command that goes end to end. The autonomous output is usually good.
+That command runs end to end. The autonomous output is usually good.
 
 ---
 
@@ -132,21 +145,17 @@ Only ffmpeg, a FIT file, and at least one `.MP4` are actually required. Everythi
 | Labels | Fully optional. This is the default mode. |
 | ffmpeg | Hard stop, up front, with install instructions. |
 
-One thing worth knowing: in June my Gemini billing lapsed, every call 403'd, the scan cached the emptiness as a valid result, and the pipeline quietly degraded to telemetry-only. The reel was mediocre and I spent an evening blaming the prompt. Now failures are never cached and a `DEGRADED` banner prints instead. **Silent degradation is strictly worse than a crash — you end up debugging the wrong system.**
-
 ---
 
 ## Tuning it to your eye
 
-The interesting config isn't in `.env`.
-
-**`src/gopro_garmin_pipeline/prompts/gemini_scan/v10.md`** is the most important file in the repo. It's the system instruction for the vision scan — a five-dimension rubric (light, composition, motion, scenery, subject, each 1–10) with anchored examples and a set of named rules, each one traceable to a specific clip I hated. My taste is legislated in there: the openness gate exists because a rail-trail tunnel scored 7.2 and I think tunnels look like being stuck in a concrete tube. **You may disagree.** Yours is a different file — write `v11.md`.
+**`src/gopro_garmin_pipeline/prompts/gemini_scan/v10.md`** is the most important file in the repo. It's the system instruction for the vision scan: a five-dimension rubric (light, composition, motion, scenery, subject, each 1–10) with anchored examples and a set of named rules. Each rule is traceable to a specific clip that Gemini skipped and I loved, or Gemini included and I hated. My taste is legislated in there: the openness gate exists because a rail-trail tunnel scored 7.2 and I think tunnels look like being stuck in a concrete tube. **You may disagree.** If your taste is different, write `v11.md`.
 
 Prompts are immutable and versioned: never edit v10, write v11. The version string is baked into the scan's cache key, so a bump invalidates exactly the affected results and nothing else. Frontmatter requires a rationale explaining what failure prompted the version.
 
-**`src/gopro_garmin_pipeline/design/tokens.json`** owns the entire look — colors, fonts, and the lockup defaults. Rebrand there, not in the drawing code.
+**`src/gopro_garmin_pipeline/design/tokens.json`** owns the design: colors, fonts, and the lockup defaults. Rebrand there, not in the drawing code.
 
-If you want to teach it your taste systematically, there's a loop for that: label a ride, scan it, diff your ratings against the model's, fix the prompt.
+If you want to teach it your taste systematically: label a ride, scan it, diff your ratings against the model's, change the prompt.
 
 ```bash
 ride-recap extract-frames <fit> <dir>   # once per ride, ~2 min
@@ -155,7 +164,7 @@ ride-recap compare <date-folder>        # your labels vs the scan
 ride-recap eval-prompt <folder>...      # feeds the diff back for suggestions
 ```
 
-It took me an evening and produced prompt versions 3 through 5. It isn't retraining a model; it's coaching a video editor by showing them the cuts you didn't like.
+This is basically coaching a video intern by showing them the cuts you didn't like.
 
 ---
 
@@ -204,19 +213,17 @@ src/gopro_garmin_pipeline/
 tests/                # Smoke tests
 ```
 
-Two design notes, if you're reading the code. `LayoutGeometry` holds every layout-varying dimension, so there are zero landscape/portrait conditionals in the drawing code — adding a layout is one new dataclass instance. And overlay rendering pipes raw RGBA frames straight to ffmpeg's stdin; portrait center-crops 16:9→9:16 in the same encoding pass.
-
 ---
 
 ## Caveats
 
-- **Built for one setup**: GoPro Hero 13 + Garmin Edge 540 + road cycling. Other GoPros should work (GPMF sync reads the standard telemetry track); other sports are untested and the prompt is full of cycling assumptions.
-- **macOS is the tested platform.** It should run on Linux — encoder selection and font fallback both probe rather than assume — but I haven't tested it there. If it breaks, that's a bug worth filing.
-- **The learned ranker is scaffolding.** `learned_ranker.py` logs training data on every compose and will fit a logistic regression at ~100 examples. I never reached the threshold before the feature schema went stale. It's honest to call it unfinished.
-- Video and FIT files are gitignored. Don't commit your rides.
+* **Built for one setup**: GoPro Hero 13 + Garmin Edge 540 + road cycling. Other cameras and head units should work (GPMF sync reads the standard telemetry track), but are untested.
+* **I only tested on macOS**: should work for Linux but I haven't tested yet.
+* **The learned ranker is WIP.** `learned_ranker.py` logs training data on every compose and will fit a logistic regression at ~100 examples. I never reached the threshold before the feature schema went stale. It's honest to call it unfinished.
+* Video and FIT files are gitignored.
 
 ## License
 
 MIT — see [LICENSE](LICENSE). Bundled fonts (Barlow Condensed, Inter) are SIL OFL 1.1; see [src/gopro_garmin_pipeline/assets/fonts/OFL.txt](src/gopro_garmin_pipeline/assets/fonts/OFL.txt).
 
-Contributions welcome, but this is a personal project I use most weekends — I'd rather it stay small and opinionated than grow into a framework. If you fork it and make it yours, tell me; I'd like to see your reel.
+Contributions welcome, but this is a personal project I use most weekends and I have a real job. If you fork it and make it yours, tell me! I'd love to see your reel.
