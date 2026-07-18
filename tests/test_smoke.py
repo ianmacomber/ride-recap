@@ -14,6 +14,8 @@ import pytest
 from gopro_garmin_pipeline.config import Settings
 from gopro_garmin_pipeline.design import tokens as T
 from gopro_garmin_pipeline import route_metadata as rm
+from gopro_garmin_pipeline import prompt_eval as pe
+from gopro_garmin_pipeline.utils import rating_visual_action
 
 
 # ─── Config ───────────────────────────────────────────────────
@@ -158,3 +160,55 @@ def test_haversine_matches_a_known_distance():
     # Empire State Building → Times Square, ~0.8 mi
     d = rm.haversine_mi(40.7484, -73.9857, 40.7580, -73.9855)
     assert 0.6 < d < 0.9
+
+
+# ─── Gemini hit → label scale ─────────────────────────────────
+
+def test_v10_rubric_folds_onto_the_label_scale():
+    """v10 stores a five-dim rubric, labels store visual/action.
+
+    These have to land in the same 1-10 space or `compare` reports
+    nonsense. `light` is excluded, matching composer._rubric_score.
+    """
+    hit = {"rubric": {"light": 10, "composition": 6, "motion": 4,
+                      "scenery": 8, "subject": 2}}
+    visual, action = rating_visual_action(hit)
+    assert visual == 7   # mean(composition 6, scenery 8)
+    assert action == 3   # mean(motion 4, subject 2)
+
+
+def test_pre_v10_hits_still_read_their_own_visual_action():
+    visual, action = rating_visual_action({"visual": 7, "action": 4})
+    assert (visual, action) == (7, 4)
+
+
+def test_a_hit_with_no_scores_at_all_is_zero_not_a_crash():
+    assert rating_visual_action({}) == (0, 0)
+    assert rating_visual_action({"rubric": {}}) == (0, 0)
+
+
+def test_anchor_video_secs_is_read_from_v10_hits():
+    """v10 renamed video_secs → anchor_video_secs. Reading the old key
+    silently placed every hit at ride time zero, so nothing aligned."""
+    assert pe._hit_video_secs({"anchor_video_secs": 3.75}) == 3.75
+    assert pe._hit_video_secs({"video_secs": 9.0}) == 9.0   # legacy
+    assert pe._hit_video_secs({}) == 0.0
+
+
+def test_explicit_visual_action_wins_over_a_rubric():
+    """A human label that also carries a rubric must read its own scores."""
+    got = rating_visual_action(
+        {"visual": 9, "action": 2, "rubric": {"composition": 1, "scenery": 1}})
+    assert got == (9, 2)
+
+
+def test_serialized_candidate_reads_through_its_nested_label():
+    """candidates.json nests the rubric under "label"."""
+    seg = {"label": {"rubric": {"composition": 8, "scenery": 8,
+                                "motion": 2, "subject": 2}}}
+    assert rating_visual_action(seg) == (8, 2)
+
+
+def test_telemetry_only_candidate_is_honestly_zero():
+    """No rubric, no label — nothing looked at this clip. Not a crash."""
+    assert rating_visual_action({"score": 4.0, "sources": ["telemetry"]}) == (0, 0)

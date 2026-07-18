@@ -22,7 +22,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .utils import format_time, normalize_label_scale
+from .utils import format_time, normalize_label_scale, rating_visual_action
 
 # Temporal alignment window: label and Gemini hit within this many
 # seconds are considered a "match"
@@ -30,6 +30,14 @@ _MATCH_WINDOW = 15.0
 
 # Report filename
 _REPORT_NAME = "prompt_eval.json"
+
+
+def _hit_video_secs(hit: dict) -> float:
+    """Where in its clip a hit sits. v10 renamed this to anchor_video_secs."""
+    v = hit.get("anchor_video_secs")
+    if v is None:
+        v = hit.get("video_secs", 0)
+    return v or 0.0
 
 
 @dataclass
@@ -160,9 +168,9 @@ def _load_labels(date_folder: Path) -> list[dict]:
     """Load ride_labels.json from a date folder.
 
     Old labels saved on the 1-5 scale are upgraded to the 1-10 scale on
-    read so the comparison flow operates in a single space. Note: Gemini
-    hits still emit visual/action on 1-5; until that scale is bumped,
-    `compare` will show labels on 1-10 alongside Gemini on 1-5.
+    read so the comparison flow operates in a single space. Gemini hits
+    reach the same space via `rating_visual_action`, which folds the v10
+    five-dim rubric down to visual/action.
     """
     labels_path = date_folder / "ride_labels.json"
     if not labels_path.exists():
@@ -219,15 +227,16 @@ def _align_moments(
     # doesn't have ride_time_secs, we approximate from video_secs.
     gemini_moments = []
     for hit in gemini_hits:
-        ride_secs = hit.get("ride_time_secs", hit.get("video_secs", 0))
+        video_secs = _hit_video_secs(hit)
+        visual, action = rating_visual_action(hit)
         gemini_moments.append({
-            "ride_time_secs": ride_secs,
-            "visual": hit.get("visual", 0),
-            "action": hit.get("action", 0),
+            "ride_time_secs": hit.get("ride_time_secs", video_secs),
+            "visual": visual,
+            "action": action,
             "clip_type": hit.get("clip_type", ""),
             "reason": hit.get("reason", ""),
             "clip_name": hit.get("clip_name", ""),
-            "video_secs": hit.get("video_secs", 0),
+            "video_secs": video_secs,
         })
 
     # Sort both by ride time
@@ -674,7 +683,7 @@ def enrich_gemini_hits_with_ride_time(
             if "ride_time_secs" in hit:
                 continue
             clip_name = hit.get("clip_name", "")
-            video_secs = hit.get("video_secs", 0)
+            video_secs = _hit_video_secs(hit)
             sc = sc_by_name.get(clip_name)
             if sc is None:
                 continue

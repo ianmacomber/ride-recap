@@ -120,6 +120,47 @@ def normalize_label_scale(label: dict) -> dict:
     return out
 
 
+# Labels rate a moment on visual/action. The v10 rubric rates it on five
+# dims instead, so anything that wants to compare or score the two together
+# has to fold one onto the other. `light` is left out for the reason
+# composer._rubric_score leaves it out — it doesn't discriminate.
+VISUAL_RUBRIC_DIMS = ("composition", "scenery")
+ACTION_RUBRIC_DIMS = ("motion", "subject")
+
+
+def _mean_dims(rubric: dict, dims: tuple[str, ...]) -> int:
+    vals = [rubric.get(k) for k in dims]
+    vals = [v for v in vals if isinstance(v, (int, float))]
+    if not vals:
+        return 0
+    return round(sum(vals) / len(vals))
+
+
+def rating_visual_action(data: dict) -> tuple[int, int]:
+    """Best available (visual, action) for a moment, on the 1-10 scale.
+
+    Reads explicit visual/action when present — human labels and pre-v10
+    Gemini hits both carry them. Otherwise folds a v10 rubric down. Returns
+    (0, 0) when there's nothing to read, which is the honest answer for a
+    telemetry-only candidate that was never looked at.
+
+    A nested "label" dict is checked last so serialized candidates work.
+    """
+    visual = data.get("visual")
+    action = data.get("action")
+    if visual is not None or action is not None:
+        return int(visual or 0), int(action or 0)
+
+    rubric = data.get("rubric") or {}
+    if rubric:
+        return _mean_dims(rubric, VISUAL_RUBRIC_DIMS), _mean_dims(rubric, ACTION_RUBRIC_DIMS)
+
+    nested = data.get("label") or {}
+    if nested and nested is not data:
+        return rating_visual_action(nested)
+    return 0, 0
+
+
 def parse_json_response(text: str) -> dict | list:
     """Robustly parse JSON from VLM output.
 

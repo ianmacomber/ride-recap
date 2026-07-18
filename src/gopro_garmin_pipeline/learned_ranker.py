@@ -18,6 +18,8 @@ from pathlib import Path
 
 import numpy as np
 
+from .utils import rating_visual_action
+
 
 _DATA_DIR = Path.home() / ".gopro-garmin"
 _TRAINING_FILE = _DATA_DIR / "training_data.jsonl"
@@ -72,8 +74,12 @@ def _extract_features(seg_data: dict) -> dict[str, float]:
     Features are designed to be available from the candidate pool (candidates.json)
     without needing the original RideData or GoPro files.
     """
-    visual = float(seg_data.get("visual", seg_data.get("label", {}).get("visual", 0)))
-    action = float(seg_data.get("action", seg_data.get("label", {}).get("action", 0)))
+    # Gemini candidates store a rubric rather than visual/action. Reading the
+    # keys directly made both features constant-zero for nearly every
+    # candidate, so the ranker was training on "is this a human label?"
+    _visual, _action = rating_visual_action(seg_data)
+    visual = float(_visual)
+    action = float(_action)
     score = float(seg_data.get("score", 0))
     sources = seg_data.get("sources", [])
     source_count = float(len(sources)) if sources else 1.0
@@ -147,11 +153,12 @@ def collect_from_segments(
     selected_indices = set()
 
     for i, seg in enumerate(all_candidates):
+        visual, action = rating_visual_action(seg.label)
         d = {
             "score": seg.score,
             "sources": seg.sources if seg.sources else [seg.source],
-            "visual": seg.label.get("visual", 0),
-            "action": seg.label.get("action", 0),
+            "visual": visual,
+            "action": action,
             "notes": seg.label.get("notes", ""),
         }
         all_dicts.append(d)

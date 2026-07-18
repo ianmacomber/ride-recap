@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 
 from .fit_parser import RideData
 from .sync import SyncedClip
-from .utils import MS_TO_MPH, normalize_label_scale
+from .utils import MS_TO_MPH, normalize_label_scale, rating_visual_action
 
 if TYPE_CHECKING:
     from .burn_overlay import OverlayRenderer  # noqa: F401 — annotations only
@@ -1200,8 +1200,9 @@ def _narrative_select(
     for i, seg in enumerate(candidates):
         notes = seg.label.get("notes", "")[:60]
         clip_type = seg.label.get("clip_type", seg.label.get("type", ""))
-        visual = seg.label.get("visual", 0)
-        action = seg.label.get("action", 0)
+        # Gemini candidates carry a rubric, not visual/action — read through
+        # the fold so they don't all report 0 to the selector.
+        visual, action = rating_visual_action(seg.label)
         sources = ",".join(seg.sources) if seg.sources else seg.source
         mins = int(seg.ride_time_secs // 60)
         secs = int(seg.ride_time_secs % 60)
