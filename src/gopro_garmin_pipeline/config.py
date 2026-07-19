@@ -22,9 +22,18 @@ class Settings(BaseSettings):
     strava_client_id: str = ""
     strava_client_secret: str = ""
 
+    # --- Model provider (one provider powers the entire run) ---
+    # gemini (default) | openai. Vision scan, narrative select, and prompt
+    # eval all use this provider — never mixed in a single run.
+    model_provider: str = "gemini"
+
     # --- Gemini ---
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash"
+
+    # --- OpenAI ---
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4.1-mini"
 
     # --- OpenStreetMap ---
     # Nominatim and Overpass require a contact address on every request so

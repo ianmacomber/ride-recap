@@ -178,18 +178,63 @@ def _load_labels(date_folder: Path) -> list[dict]:
     return [normalize_label_scale(lab) for lab in json.loads(labels_path.read_text())]
 
 
-def _load_gemini_hits(date_folder: Path) -> list[dict]:
-    """Load all Gemini scan hits from .gemini_cache/ in a date folder."""
-    cache_dir = date_folder / ".gemini_cache"
+def _active_model_id(settings) -> str:
+    provider = (settings.model_provider or "gemini").lower()
+    if provider == "openai":
+        return settings.openai_model
+    return settings.gemini_model
+
+
+def _cache_files_for_active_model(cache_dir: Path, provider: str, model_id: str) -> list[Path]:
+    """List cache JSON files for the active provider/model only.
+
+    Gemini: all ``*.json`` (legacy filenames have no model fingerprint).
+    OpenAI: only files whose name contains ``_m{fingerprint}`` for the
+    active ``OPENAI_MODEL`` — never merge results across models.
+    """
     if not cache_dir.exists():
-        # Check legacy
-        legacy = date_folder / "gemini_cache.json"
-        if legacy.exists():
-            return json.loads(legacy.read_text())
+        return []
+    files = sorted(cache_dir.glob("*.json"))
+    if provider == "gemini":
+        return files
+
+    from .gemini_scan import _model_fingerprint
+
+    fp = _model_fingerprint(model_id)
+    matched: list[Path] = []
+    for path in files:
+        stem = path.stem
+        # Keys: {stem}_{ver}_m{fp}.json or {stem}_{ver}_m{fp}_l{label}.json
+        if stem.endswith(f"_m{fp}") or f"_m{fp}_l" in stem:
+            matched.append(path)
+    return matched
+
+
+def _load_gemini_hits(date_folder: Path) -> list[dict]:
+    """Load vision-scan hits from the active provider's cache directory.
+
+    Uses ``MODEL_PROVIDER`` to pick ``.{provider}_cache/``. Does **not**
+    fall back across providers (one-provider rule). Gemini still accepts
+    legacy ``gemini_cache.json``. OpenAI files are filtered to the active
+    ``OPENAI_MODEL`` fingerprint.
+    """
+    from .config import get_settings
+    from .models import cache_dir_name
+
+    settings = get_settings()
+    provider = (settings.model_provider or "gemini").lower()
+    model_id = _active_model_id(settings)
+    cache_dir = date_folder / cache_dir_name(provider)
+
+    if not cache_dir.exists():
+        if provider == "gemini":
+            legacy = date_folder / "gemini_cache.json"
+            if legacy.exists():
+                return json.loads(legacy.read_text())
         return []
 
     all_hits = []
-    for cache_file in sorted(cache_dir.glob("*.json")):
+    for cache_file in _cache_files_for_active_model(cache_dir, provider, model_id):
         try:
             hits = json.loads(cache_file.read_text())
             if isinstance(hits, list):
@@ -561,33 +606,36 @@ def eval_prompt(
     date_folders: list[Path],
     current_prompt: str | None = None,
 ) -> dict:
-    """Use Gemini to analyze label/scan comparison and suggest prompt improvements.
+    """Analyze label/scan comparison and suggest prompt improvements.
 
-    Loads comparison reports from all provided date folders, aggregates them,
-    and asks Gemini for specific prompt change suggestions.
+    Uses the same MODEL_PROVIDER as the vision scan — never a second provider.
 
     Args:
         date_folders: List of ride date folders with prompt_eval.json files
-        current_prompt: The current Gemini system instruction. If None, loads
-            from gemini_scan._SYSTEM_INSTRUCTION.
+        current_prompt: The current fine-pass system instruction. If None,
+            loads from gemini_scan._SYSTEM_INSTRUCTION (v10 placeholders).
 
     Returns:
         Dict with analysis and suggested changes.
     """
     from .config import get_settings
-    from .gemini_scan import _SYSTEM_INSTRUCTION, _MIN_VISUAL_SCORE, _MIN_ACTION_SCORE
+    from .gemini_scan import _SYSTEM_INSTRUCTION, _build_context_strings
+    from .models import get_model_adapter, provider_api_key
+
+    settings = get_settings()
+    if not provider_api_key(settings):
+        print("No API key for MODEL_PROVIDER; cannot run prompt eval.")
+        return {}
 
     if current_prompt is None:
-        ftp = get_settings().ftp
+        power_zones, telemetry_fields, telemetry_examples = _build_context_strings(
+            True, settings.ftp,
+        )
         current_prompt = _SYSTEM_INSTRUCTION.format(
-            min_visual=_MIN_VISUAL_SCORE, min_action=_MIN_ACTION_SCORE,
-            ftp=ftp,
-            z1=int(ftp * 0.55),
-            z2=int(ftp * 0.75),
-            z3=int(ftp * 0.90),
-            z4=int(ftp * 1.05),
-            z5=int(ftp * 1.20),
-            z6=int(ftp * 1.50),
+            n_frames=6,
+            power_zones=power_zones,
+            telemetry_fields=telemetry_fields,
+            telemetry_examples=telemetry_examples,
         )
 
     reports = _load_all_reports(date_folders)
@@ -612,23 +660,15 @@ def eval_prompt(
         pattern_details=_format_patterns(agg["all_patterns"]),
     )
 
-    settings = get_settings()
-    from google import genai
-    from google.genai import types
-
-    client = genai.Client(api_key=settings.gemini_api_key)
-    response = client.models.generate_content(
-        model=settings.gemini_model,
-        contents=[types.Content(parts=[types.Part.from_text(text=prompt_text)])],
-        config=types.GenerateContentConfig(
-            system_instruction=_EVAL_SYSTEM,
-        ),
+    adapter = get_model_adapter(settings)
+    result = adapter.complete_json(
+        prompt=prompt_text,
+        system=_EVAL_SYSTEM,
+        temperature=0.3,
+        max_output_tokens=2048,
     )
-
-    from .utils import parse_json_response
-    result = parse_json_response(response.text)
     if not isinstance(result, dict):
-        result = {"raw_response": response.text}
+        result = {"raw_response": result}
 
     # Save eval result alongside reports
     for folder in date_folders:
@@ -643,14 +683,17 @@ def eval_prompt(
 def enrich_gemini_hits_with_ride_time(
     date_folder: Path, offset: float = 0.0,
 ) -> None:
-    """Add ride_time_secs to cached Gemini hits so comparison can align them.
+    """Add ride_time_secs to cached vision hits so comparison can align them.
 
-    Gemini cache stores video_secs per clip. This function maps each hit
+    Cache stores video_secs per clip. This function maps each hit
     to ride-relative time using FIT + GoPro sync, then re-saves the cache.
+    Uses the active MODEL_PROVIDER cache directory.
     """
     import datetime as dt
+    from .config import get_settings
     from .fit_parser import parse_fit
     from .gopro_meta import extract_all
+    from .models import cache_dir_name
     from .sync import normalize_tz, sync_all
 
     date_folder = Path(date_folder)
@@ -666,11 +709,14 @@ def enrich_gemini_hits_with_ride_time(
     synced_clips = sync_all(clips, ride, offset)
     sc_by_name = {sc.clip.path.name: sc for sc in synced_clips}
 
-    cache_dir = date_folder / ".gemini_cache"
+    settings = get_settings()
+    provider = (settings.model_provider or "gemini").lower()
+    model_id = _active_model_id(settings)
+    cache_dir = date_folder / cache_dir_name(provider)
     if not cache_dir.exists():
         return
 
-    for cache_file in sorted(cache_dir.glob("*.json")):
+    for cache_file in _cache_files_for_active_model(cache_dir, provider, model_id):
         try:
             hits = json.loads(cache_file.read_text())
         except (json.JSONDecodeError, OSError):

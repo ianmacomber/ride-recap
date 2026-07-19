@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .fit_parser import RideData
+from .models import VISION_SOURCES
 from .sync import SyncedClip
 from .utils import MS_TO_MPH, normalize_label_scale, rating_visual_action
 
@@ -605,7 +606,14 @@ def _normalize_scores(candidates: list[Segment]) -> None:
                 s.score = _NON_GEMINI_SCORE_FLOOR + ((s.score - lo) / span) * span_size
 
 
-_SOURCE_PRIORITY = {"label": 0, "telemetry": 1, "strava": 2, "clip": 3, "gemini": 4}
+# Vision providers share the same priority band as historical "gemini".
+_SOURCE_PRIORITY = {
+    "label": 0,
+    "telemetry": 1,
+    "strava": 2,
+    "clip": 3,
+    **{src: 4 for src in VISION_SOURCES},
+}
 
 # Review-cap tunables: fraction of slots filled top-down by score, then the
 # remainder sampled round-robin across these score bands so weak Gemini
@@ -770,16 +778,16 @@ def _fuse_candidates(candidates: list[Segment], cap: int = _CANDIDATE_CAP) -> li
                 fused[i] = winner
                 merged = True
                 break
-            if (same_source and seg.source == "gemini"
+            if (same_source and seg.source in VISION_SOURCES
                     and dt < _GEMINI_DEDUP_WINDOW):
-                # Two Gemini-rated frames this close describe the same
+                # Two vision-rated frames this close describe the same
                 # scene (e.g. the same bridge crossing flagged twice with
                 # slightly different wording). Collapse to the higher-scored
                 # one so the cut never shows the same view back-to-back.
-                # Gemini scores are already rubric-derived (_normalize_scores
+                # Vision scores are already rubric-derived (_normalize_scores
                 # above), so .score IS the visual-quality comparison. Gated to
-                # Gemini on purpose: adjacent telemetry spikes ARE independent
-                # events and must stay separate.
+                # vision sources on purpose: adjacent telemetry spikes ARE
+                # independent events and must stay separate.
                 winner = seg if seg.score > existing.score else existing
                 _union_review_window(winner, seg, existing)
                 fused[i] = winner
@@ -814,7 +822,7 @@ def _fuse_candidates(candidates: list[Segment], cap: int = _CANDIDATE_CAP) -> li
     for seg in fused:
         if seg.rubric:
             continue
-        if "gemini" in seg.sources:
+        if VISION_SOURCES.intersection(seg.sources):
             continue
         if seg.score > _BLIND_TELEMETRY_CEILING:
             seg.score = _BLIND_TELEMETRY_CEILING
@@ -912,7 +920,8 @@ def _generate_candidates(
 
     # 3. Gemini vision
     if gemini_candidates:
-        print(f"  Gemini vision: {len(gemini_candidates)} candidates")
+        src = gemini_candidates[0].source or "vision"
+        print(f"  Vision ({src}): {len(gemini_candidates)} candidates")
         all_candidates.extend(gemini_candidates)
 
     # 4. Manual labels
@@ -1180,17 +1189,18 @@ def _narrative_select(
     budget_secs: float,
     layout: str = "landscape",
 ) -> list[Segment] | None:
-    """Ask Gemini to select clips that tell a compelling ride story.
+    """Ask the configured model to select clips that tell a ride story.
 
     Passes the full candidate list with timestamps, scores, descriptions, and
-    clip types. Gemini returns indices of selected clips in narrative order.
+    clip types. Returns indices of selected clips in narrative order.
     Falls back to None on any failure (caller should use greedy selection).
+    Uses the same MODEL_PROVIDER as the vision scan — never a second provider.
     """
     from .config import get_settings
-    from .utils import parse_json_response
+    from .models import get_model_adapter, provider_api_key
 
     settings = get_settings()
-    if not settings.gemini_api_key:
+    if not provider_api_key(settings):
         return None
 
     candidates = sorted(candidates, key=lambda s: s.ride_time_secs)
@@ -1200,7 +1210,7 @@ def _narrative_select(
     for i, seg in enumerate(candidates):
         notes = seg.label.get("notes", "")[:60]
         clip_type = seg.label.get("clip_type", seg.label.get("type", ""))
-        # Gemini candidates carry a rubric, not visual/action — read through
+        # Vision candidates carry a rubric, not visual/action — read through
         # the fold so they don't all report 0 to the selector.
         visual, action = rating_visual_action(seg.label)
         sources = ",".join(seg.sources) if seg.sources else seg.source
@@ -1232,22 +1242,14 @@ def _narrative_select(
     )
 
     def _call(prompt_text: str) -> list:
-        """One Gemini call → flat list of candidate indices (flattening any
+        """One model call → flat list of candidate indices (flattening any
         nested arrays like [[0],[5]]). Empty list on a non-list response."""
-        from google import genai
-        from google.genai import types
-
-        client = genai.Client(api_key=settings.gemini_api_key)
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=[types.Content(parts=[types.Part.from_text(text=prompt_text)])],
-            config=types.GenerateContentConfig(
-                temperature=0.3,
-                max_output_tokens=1024,
-                thinking_config=types.ThinkingConfig(thinking_budget=256),
-            ),
+        adapter = get_model_adapter(settings)
+        result = adapter.complete_json(
+            prompt=prompt_text,
+            temperature=0.3,
+            max_output_tokens=1024,
         )
-        result = parse_json_response(response.text)
         if not isinstance(result, list):
             return []
         flat = []

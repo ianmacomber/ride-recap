@@ -34,8 +34,9 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+from .models import ModelAdapter, cache_dir_name, get_model_adapter, provider_api_key
 from .prompt_registry import prompt_body
-from .utils import MS_TO_MPH, compute_gradient, gopro_lrv_proxy, parse_json_response
+from .utils import MS_TO_MPH, compute_gradient, gopro_lrv_proxy
 
 
 # ─── Scan parameters ─────────────────────────────────────────
@@ -67,10 +68,6 @@ _MAX_WORKERS = 4        # concurrent Gemini API calls
 _PROMPT_VERSION = "v10"
 _CACHE_VERSION = _PROMPT_VERSION  # cache key tracks prompt version
 _SYSTEM_INSTRUCTION = prompt_body("gemini_scan", _PROMPT_VERSION)
-
-# Per-request timeout (seconds × 1000 = ms in HttpOptions). Without this,
-# a stuck Gemini connection hangs forever instead of triggering retry.
-_REQUEST_TIMEOUT_MS = 180_000
 
 # Coarse pass still uses the v5 frame-rating prompt for region detection
 _COARSE_PROMPT_VERSION = "v5"
@@ -368,119 +365,98 @@ class _ScanErrors:
                     self.samples.append(s)
 
 
-def _get_client(settings):
-    """Create a Gemini client (import on first use)."""
-    from google import genai
-    return genai.Client(api_key=settings.gemini_api_key)
-
-
-def _call_batch(
-    client,
-    frame_paths: list[Path],
-    telemetry_text: str,
-    n_frames: int,
-    interval: float,
-    settings,
-    has_power: bool = True,
-) -> list[dict]:
-    """Coarse pass — score N frames individually using v5 frame-rating prompt."""
-    from google.genai import types
-
-    parts = []
+def _read_images(frame_paths: list[Path]) -> list[bytes]:
+    images: list[bytes] = []
     for fp in frame_paths:
         with open(fp, "rb") as f:
-            data = f.read()
-        parts.append(types.Part.from_bytes(data=data, mime_type="image/jpeg"))
+            images.append(f.read())
+    return images
 
-    user_text = _BATCH_TEMPLATE.format(
-        n_frames=n_frames, interval=interval, telemetry=telemetry_text,
-    )
-    parts.append(types.Part.from_text(text=user_text))
 
+def _coarse_prompts(
+    telemetry_text: str, n_frames: int, interval: float, has_power: bool,
+) -> tuple[str, str]:
+    """Build system + user text for the coarse (v5) pass."""
     from .config import get_settings as _get_settings
     _s = _get_settings()
     power_zones, telemetry_fields, telemetry_examples = _build_context_strings(
         has_power, _s.ftp,
     )
-
     system_text = _COARSE_SYSTEM_INSTRUCTION.format(
         min_visual=_COARSE_MIN_VISUAL, min_action=_COARSE_MIN_ACTION,
         power_zones=power_zones,
         telemetry_fields=telemetry_fields,
         telemetry_examples=telemetry_examples,
     )
-
-    response = client.models.generate_content(
-        model=settings.gemini_model,
-        contents=[types.Content(parts=parts)],
-        config=types.GenerateContentConfig(
-            system_instruction=system_text,
-            http_options=types.HttpOptions(timeout=_REQUEST_TIMEOUT_MS),
-        ),
+    user_text = _BATCH_TEMPLATE.format(
+        n_frames=n_frames, interval=interval, telemetry=telemetry_text,
     )
-
-    result = parse_json_response(response.text)
-    return result if isinstance(result, list) else []
+    return system_text, user_text
 
 
-def _call_clip_rubric(
-    client,
-    frame_paths: list[Path],
-    telemetry_text: str,
-    duration: float,
-    settings,
-    has_power: bool = True,
-) -> dict | None:
-    """Clip pass — rate one clip on the 5-dim rubric using v6 prompt."""
-    from google.genai import types
-
-    parts = []
-    for fp in frame_paths:
-        with open(fp, "rb") as f:
-            data = f.read()
-        parts.append(types.Part.from_bytes(data=data, mime_type="image/jpeg"))
-
-    user_text = _CLIP_TEMPLATE.format(
-        duration=duration, n_frames=len(frame_paths), telemetry=telemetry_text,
-    )
-    parts.append(types.Part.from_text(text=user_text))
-
+def _fine_prompts(
+    telemetry_text: str, duration: float, n_frames: int, has_power: bool,
+) -> tuple[str, str]:
+    """Build system + user text for the fine rubric pass."""
     from .config import get_settings as _get_settings
     _s = _get_settings()
     power_zones, telemetry_fields, telemetry_examples = _build_context_strings(
         has_power, _s.ftp,
     )
-
     system_text = _SYSTEM_INSTRUCTION.format(
-        n_frames=len(frame_paths),
+        n_frames=n_frames,
         power_zones=power_zones,
         telemetry_fields=telemetry_fields,
         telemetry_examples=telemetry_examples,
     )
+    user_text = _CLIP_TEMPLATE.format(
+        duration=duration, n_frames=n_frames, telemetry=telemetry_text,
+    )
+    return system_text, user_text
 
-    response = client.models.generate_content(
-        model=settings.gemini_model,
-        contents=[types.Content(parts=parts)],
-        config=types.GenerateContentConfig(
-            system_instruction=system_text,
-            http_options=types.HttpOptions(timeout=_REQUEST_TIMEOUT_MS),
-        ),
+
+def _call_batch(
+    adapter: ModelAdapter,
+    frame_paths: list[Path],
+    telemetry_text: str,
+    n_frames: int,
+    interval: float,
+    has_power: bool = True,
+) -> list[dict]:
+    """Coarse pass — score N frames individually using v5 frame-rating prompt."""
+    system_text, user_text = _coarse_prompts(
+        telemetry_text, n_frames, interval, has_power,
+    )
+    return adapter.score_frames(
+        images=_read_images(frame_paths),
+        system=system_text,
+        user=user_text,
     )
 
-    result = parse_json_response(response.text)
-    if isinstance(result, dict):
-        return result
-    if isinstance(result, list) and result:
-        first = result[0]
-        return first if isinstance(first, dict) else None
-    return None
+
+def _call_clip_rubric(
+    adapter: ModelAdapter,
+    frame_paths: list[Path],
+    telemetry_text: str,
+    duration: float,
+    has_power: bool = True,
+) -> dict | None:
+    """Clip pass — rate one clip on the 5-dim rubric."""
+    system_text, user_text = _fine_prompts(
+        telemetry_text, duration, len(frame_paths), has_power,
+    )
+    return adapter.score_clip_rubric(
+        images=_read_images(frame_paths),
+        system=system_text,
+        user=user_text,
+    )
 
 
 def _call_with_retry(
-    client, frame_paths, telemetry_text, n_frames, interval, settings,
+    adapter: ModelAdapter, frame_paths, telemetry_text, n_frames, interval,
     label: str = "", has_power: bool = True, errors: _ScanErrors | None = None,
 ) -> list[dict] | None:
-    """Call Gemini with exponential backoff on transient errors.
+    """Call the vision adapter with exponential backoff on transient errors.
 
     Returns the parsed result on success (including a legitimately empty
     list). Returns None only when the call HARD-FAILS — a non-retryable
@@ -491,11 +467,13 @@ def _call_with_retry(
     last_err = ""
     for attempt in range(5):
         try:
-            return _call_batch(client, frame_paths, telemetry_text, n_frames, interval, settings,
-                               has_power=has_power)
+            return _call_batch(
+                adapter, frame_paths, telemetry_text, n_frames, interval,
+                has_power=has_power,
+            )
         except Exception as e:
             last_err = str(e)
-            if any(code in last_err for code in ("503", "429", "UNAVAILABLE")):
+            if adapter.is_transient_error(e):
                 wait = 2 ** attempt * 5
                 print(f"    {label}: {last_err[:80]}... retrying in {wait}s")
                 time.sleep(wait)
@@ -511,9 +489,6 @@ def _call_with_retry(
 
 # ─── Per-clip caching ────────────────────────────────────────
 
-_CACHE_DIR_NAME = ".gemini_cache"
-
-
 def _label_fingerprint(forced_fine_times: list[float] | None) -> str:
     """Short stable digest of label-forced timestamps for cache keying.
 
@@ -528,24 +503,44 @@ def _label_fingerprint(forced_fine_times: list[float] | None) -> str:
     return hashlib.sha1(sig.encode()).hexdigest()[:8]
 
 
+def _model_fingerprint(model_id: str) -> str:
+    return hashlib.sha1(model_id.encode()).hexdigest()[:8]
+
+
 def _clip_cache_key(
-    clip_name: str, forced_fine_times: list[float] | None = None,
+    clip_name: str,
+    forced_fine_times: list[float] | None = None,
+    *,
+    provider: str = "gemini",
+    model_id: str = "",
 ) -> str:
-    """Stable filename-safe cache key for a clip + scan version + labels."""
+    """Stable filename-safe cache key for a clip + scan version + labels.
+
+    Gemini keeps legacy filenames (no model fingerprint). Other providers
+    include ``_m{model_fp}`` so changing OPENAI_MODEL cannot reuse ratings.
+    """
     stem = Path(clip_name).stem
+    parts = [stem, _CACHE_VERSION]
+    if provider != "gemini" and model_id:
+        parts.append(f"m{_model_fingerprint(model_id)}")
     fp = _label_fingerprint(forced_fine_times)
     if fp:
-        return f"{stem}_{_CACHE_VERSION}_l{fp}.json"
-    return f"{stem}_{_CACHE_VERSION}.json"
+        parts.append(f"l{fp}")
+    return "_".join(parts) + ".json"
 
 
 def _load_clip_cache(
     video_dir: Path, clip_name: str,
     forced_fine_times: list[float] | None = None,
+    *,
+    provider: str = "gemini",
+    model_id: str = "",
 ) -> list[dict] | None:
-    """Load cached hits for a single clip + label set."""
-    cache_dir = video_dir / _CACHE_DIR_NAME
-    cache_file = cache_dir / _clip_cache_key(clip_name, forced_fine_times)
+    """Load cached hits for a single clip + label set + provider/model."""
+    cache_dir = video_dir / cache_dir_name(provider)
+    cache_file = cache_dir / _clip_cache_key(
+        clip_name, forced_fine_times, provider=provider, model_id=model_id,
+    )
     if not cache_file.exists():
         return None
     try:
@@ -560,11 +555,16 @@ def _load_clip_cache(
 def _save_clip_cache(
     video_dir: Path, clip_name: str, hits: list[dict],
     forced_fine_times: list[float] | None = None,
+    *,
+    provider: str = "gemini",
+    model_id: str = "",
 ) -> None:
-    """Save raw hits for a single clip + label set."""
-    cache_dir = video_dir / _CACHE_DIR_NAME
+    """Save raw hits for a single clip + label set + provider/model."""
+    cache_dir = video_dir / cache_dir_name(provider)
     cache_dir.mkdir(exist_ok=True)
-    cache_file = cache_dir / _clip_cache_key(clip_name, forced_fine_times)
+    cache_file = cache_dir / _clip_cache_key(
+        clip_name, forced_fine_times, provider=provider, model_id=model_id,
+    )
     cache_file.write_text(json.dumps(hits, indent=2))
 
 
@@ -584,25 +584,32 @@ def _scan_clip(
         whole on the 5-dim rubric.
 
     forced_fine_times: video_secs positions that must be rated regardless
-        of coarse scores. Used to ensure Gemini sees every labeled moment.
+        of coarse scores. Used to ensure the model sees every labeled moment.
     """
     clip = sc.clip
     clip_name = clip.path.name
 
+    # Per-clip adapter so nested thread pools do not share one client.
+    adapter = get_model_adapter(settings)
+    provider = adapter.name
+    model_id = adapter.model_id
+
     # Cache key folds in the label fingerprint so adding or editing
-    # manual labels invalidates a cached scan and Gemini gets to score
+    # manual labels invalidates a cached scan and the model gets to score
     # the newly forced regions on the next run.
-    cached = _load_clip_cache(video_dir, clip_name, forced_fine_times)
+    cached = _load_clip_cache(
+        video_dir, clip_name, forced_fine_times,
+        provider=provider, model_id=model_id,
+    )
     if cached is not None:
         print(f"  {clip_name}: {len(cached)} clips (cached)")
         return cached
 
-    client = _get_client(settings)
     # Per-clip failure tally — gates caching so a transient API outage
     # is never persisted as "scanned, found nothing."
     errors = _ScanErrors()
 
-    with tempfile.TemporaryDirectory(prefix="gemini_coarse_") as tmpdir:
+    with tempfile.TemporaryDirectory(prefix="vlm_coarse_") as tmpdir:
         # ── Pass 1: coarse scan ───────────────────────────────
         print(f"  {clip_name}: coarse pass ({clip.duration_secs:.0f}s, 1 frame/{_COARSE_INTERVAL}s)...")
         coarse_frames = _extract_sparse_frames(
@@ -610,11 +617,14 @@ def _scan_clip(
             clip_duration=clip.duration_secs,
         )
         if not coarse_frames:
-            _save_clip_cache(video_dir, clip_name, [], forced_fine_times)
+            _save_clip_cache(
+                video_dir, clip_name, [], forced_fine_times,
+                provider=provider, model_id=model_id,
+            )
             return []
 
         coarse_hits = _run_batches_parallel(
-            client, coarse_frames, sc, ride, settings,
+            adapter, coarse_frames, sc, ride, settings,
             batch_size=_COARSE_BATCH, interval=_COARSE_INTERVAL,
             label_prefix=f"{clip_name} coarse",
             errors=errors,
@@ -629,7 +639,7 @@ def _scan_clip(
                 hot_times.append(h["video_secs"])
 
         # Inject forced times from labels, telemetry peaks, and coverage
-        # samples. Gemini scores blind (no label/source text), but every
+        # samples. Model scores blind (no label/source text), but every
         # forced moment gets a fair rubric rating.
         if forced_fine_times:
             n_added = 0
@@ -642,13 +652,16 @@ def _scan_clip(
 
         if not hot_times:
             if errors.count:
-                print(f"  ⚠ {clip_name}: coarse pass had {errors.count} Gemini "
+                print(f"  ⚠ {clip_name}: coarse pass had {errors.count} "
                       f"failure(s) — NOT caching empty result (will retry next run)")
                 if agg_errors is not None:
                     agg_errors.merge(errors)
                 return []
             print(f"  {clip_name}: no interesting regions found in coarse pass")
-            _save_clip_cache(video_dir, clip_name, [], forced_fine_times)
+            _save_clip_cache(
+                video_dir, clip_name, [], forced_fine_times,
+                provider=provider, model_id=model_id,
+            )
             return []
 
         # Build candidate clips (±_CLIP_PAD around each hot timestamp) and
@@ -663,24 +676,27 @@ def _scan_clip(
 
     # ── Pass 2: clip rubric rating ────────────────────────────
     clip_results = _rate_candidate_clips(
-        client, clip.path, clip_name, candidate_clips,
+        adapter, clip.path, clip_name, candidate_clips,
         sc, ride, settings, errors=errors,
     )
     print(f"  {clip_name}: {len(clip_results)} clips rated by rubric")
 
     if errors.count:
-        print(f"  ⚠ {clip_name}: {errors.count} Gemini failure(s) during scan — "
+        print(f"  ⚠ {clip_name}: {errors.count} failure(s) during scan — "
               f"NOT caching {len(clip_results)} partial result(s) (will retry next run)")
         if agg_errors is not None:
             agg_errors.merge(errors)
         return clip_results
 
-    _save_clip_cache(video_dir, clip_name, clip_results, forced_fine_times)
+    _save_clip_cache(
+        video_dir, clip_name, clip_results, forced_fine_times,
+        provider=provider, model_id=model_id,
+    )
     return clip_results
 
 
 def _rate_candidate_clips(
-    client, video_path: Path, clip_name: str,
+    adapter: ModelAdapter, video_path: Path, clip_name: str,
     candidate_clips: list[tuple[float, float]],
     sc, ride, settings, errors: _ScanErrors | None = None,
 ) -> list[dict]:
@@ -696,7 +712,7 @@ def _rate_candidate_clips(
         duration = end - start
         if duration <= 0:
             return None
-        with tempfile.TemporaryDirectory(prefix="gemini_clip_") as tmpdir:
+        with tempfile.TemporaryDirectory(prefix="vlm_clip_") as tmpdir:
             # Sample N evenly-spaced frames from this clip
             interval = duration / max(1, _FRAMES_PER_CLIP)
             samples = _extract_region_frames(
@@ -710,8 +726,8 @@ def _rate_candidate_clips(
             telemetry = _build_clip_telemetry(sc, ride, start, end)
             label = f"{clip_name} clip {idx + 1}/{n_total}"
             result = _call_clip_with_retry(
-                client, [p for _, p in samples], telemetry,
-                duration, settings, label=label, has_power=has_power,
+                adapter, [p for _, p in samples], telemetry,
+                duration, label=label, has_power=has_power,
                 errors=errors,
             )
             if not result:
@@ -723,7 +739,7 @@ def _rate_candidate_clips(
             rubric = {k: int(result.get(k, 0)) for k in rubric_keys}
             raw_sum = sum(rubric.values())
 
-            # Gemini-picked best 3-second window inside the clip.
+            # Model-picked best 3-second window inside the clip.
             # peak_offset 0.0-1.0 maps to start..end. Default to 0.5
             # (midpoint) if the model didn't return one. Clamp to [0,1].
             peak_offset = float(result.get("peak_offset", 0.5))
@@ -765,7 +781,7 @@ def _rate_candidate_clips(
 
 
 def _call_clip_with_retry(
-    client, frame_paths, telemetry_text, duration, settings,
+    adapter: ModelAdapter, frame_paths, telemetry_text, duration,
     label: str = "", has_power: bool = True, errors: _ScanErrors | None = None,
 ) -> dict | None:
     """Call clip rubric with exponential backoff on transient errors.
@@ -779,12 +795,12 @@ def _call_clip_with_retry(
     for attempt in range(5):
         try:
             return _call_clip_rubric(
-                client, frame_paths, telemetry_text, duration,
-                settings, has_power=has_power,
+                adapter, frame_paths, telemetry_text, duration,
+                has_power=has_power,
             )
         except Exception as e:
             last_err = str(e)
-            if any(code in last_err for code in ("503", "429", "UNAVAILABLE")):
+            if adapter.is_transient_error(e):
                 wait = 2 ** attempt * 5
                 print(f"    {label}: {last_err[:80]}... retrying in {wait}s")
                 time.sleep(wait)
@@ -826,7 +842,7 @@ def _merge_regions(
 # ─── Parallel batch runner ───────────────────────────────────
 
 def _run_batches_parallel(
-    client,
+    adapter: ModelAdapter,
     frames: list[tuple[float, Path]],
     sc, ride, settings,
     batch_size: int,
@@ -851,7 +867,7 @@ def _run_batches_parallel(
         label = f"{label_prefix} {batch_num + 1}/{n_batches}"
 
         results = _call_with_retry(
-            client, batch_paths, telemetry, len(batch), interval, settings,
+            adapter, batch_paths, telemetry, len(batch), interval,
             label=label, has_power=has_power, errors=errors,
         )
         if results is None:
@@ -910,6 +926,8 @@ def _run_batches_parallel(
 
 def _hits_to_segments(
     hits: list[dict], synced_clips: list, ride, config,
+    *,
+    provider: str = "gemini",
 ) -> list:
     """Convert clip rubric results to Segment candidates.
 
@@ -923,6 +941,7 @@ def _hits_to_segments(
 
     clip_by_name = {sc.clip.path.name: sc for sc in synced_clips}
     candidates = []
+    vision_type = f"{provider}_vision"
 
     for h in hits:
         clip_name = h["clip_name"]
@@ -970,12 +989,12 @@ def _hits_to_segments(
             ride_time_secs=ride_secs,
             anchor_video_secs=anchor,
             score=score,
-            source="gemini",
+            source=provider,
             rubric=rubric,
             portrait_crop_bias=crop_bias,
             label={
                 "ride_time_secs": ride_secs,
-                "type": "gemini_vision",
+                "type": vision_type,
                 "notes": reason,
                 "clip_name": clip_name,
                 "video_secs": anchor,
@@ -1074,7 +1093,7 @@ def scan_ride(
     config,
     labels: list[dict] | None = None,
 ) -> list:
-    """Scan entire ride with Gemini vision, return Segment candidates.
+    """Scan entire ride with the configured vision model, return Segment candidates.
 
     Two-pass strategy:
       1. Coarse: 1 frame/10s → find interesting regions
@@ -1083,7 +1102,7 @@ def scan_ride(
     Per-clip caching means only new/changed clips get scanned.
 
     If labels are provided, their timestamps are injected as forced
-    fine-pass regions so Gemini always scores labeled moments (blind —
+    fine-pass regions so the model always scores labeled moments (blind —
     no label text in the prompt).
     """
     from .config import get_settings
@@ -1091,16 +1110,24 @@ def scan_ride(
     video_dir = Path(video_dir)
 
     settings = get_settings()
-    if not settings.gemini_api_key:
-        print("  Gemini scan: no API key configured, skipping")
+    provider = (settings.model_provider or "gemini").lower()
+    if not provider_api_key(settings):
+        print(f"  Vision scan ({provider}): no API key configured, skipping")
         return []
+
+    # Resolve model_id for cache probes without constructing a client when
+    # we only need the fingerprint for cache-hit counting below.
+    if provider == "openai":
+        model_id = settings.openai_model
+    else:
+        model_id = settings.gemini_model
 
     # Build per-clip forced fine-pass times from labels + telemetry peaks.
     # The coarse pass at 1 frame / 10s misses fast events — a corner taken
     # at speed, a brief sprint, a 3-second descent — because the sample
     # frames don't land on the action. Telemetry knows exactly when the
     # speed/power/HR/climb peaks were; we hand those video timestamps to
-    # Gemini directly so the rubric pass scores them no matter what the
+    # the model directly so the rubric pass scores them no matter what the
     # coarse pass thought.
     forced_by_clip: dict[str, list[float]] = {}
 
@@ -1112,20 +1139,24 @@ def scan_ride(
                 forced_by_clip.setdefault(clip_name, []).append(video_secs)
         n_labels = sum(len(v) for v in forced_by_clip.values())
         if n_labels:
-            print(f"  Gemini scan: {n_labels} label timestamps forced into fine pass")
+            print(f"  Vision scan ({provider}): {n_labels} label timestamps "
+                  f"forced into fine pass")
 
     # Telemetry peak injection: detect highlights and map each peak_time
     # back to a (clip_name, video_secs) inside one of the synced clips.
     # Uses each SyncedClip's timezone-normalized clip-start to invert.
     n_telemetry = _inject_telemetry_peaks(forced_by_clip, ride, synced_clips)
     if n_telemetry:
-        print(f"  Gemini scan: {n_telemetry} telemetry peaks forced into fine pass")
+        print(f"  Vision scan ({provider}): {n_telemetry} telemetry peaks "
+              f"forced into fine pass")
 
     n_coverage = _inject_coverage_samples(forced_by_clip, synced_clips)
     if n_coverage:
-        print(f"  Gemini scan: {n_coverage} coverage samples forced into fine pass")
+        print(f"  Vision scan ({provider}): {n_coverage} coverage samples "
+              f"forced into fine pass")
 
-    # Scan clips in parallel — each clip gets its own coarse+fine pass.
+    # Scan clips in parallel — each clip gets its own coarse+fine pass
+    # and its own adapter/client instance.
     # scan_errors aggregates hard API failures across every clip so a
     # total outage triggers a loud warning instead of silently returning
     # an empty (and therefore telemetry-only) candidate set.
@@ -1141,7 +1172,7 @@ def scan_ride(
             all_hits.extend(hits)
     else:
         print(f"  Scanning {len(synced_clips)} clips in parallel...")
-        # Clip-level threads overlap Gemini API waits with ffmpeg extraction.
+        # Clip-level threads overlap API waits with ffmpeg extraction.
         # Actual ffmpeg concurrency is capped by _FFMPEG_SEMAPHORE (default 2).
         with ThreadPoolExecutor(max_workers=len(synced_clips)) as pool:
             futures = {
@@ -1163,15 +1194,17 @@ def scan_ride(
         if _load_clip_cache(
             video_dir, sc.clip.path.name,
             forced_by_clip.get(sc.clip.path.name),
+            provider=provider, model_id=model_id,
         ) is not None
     )
-    print(f"  Gemini scan: {len(all_hits)} total hits across {len(synced_clips)} clips "
-          f"({total_cached} from cache)")
+    print(f"  Vision scan ({provider}): {len(all_hits)} total hits across "
+          f"{len(synced_clips)} clips ({total_cached} from cache)")
 
     if scan_errors.count:
         print(
             "\n  " + "!" * 64 + "\n"
-            f"  ⚠️  GEMINI SCAN DEGRADED — {scan_errors.count} API call(s) hard-failed.\n"
+            f"  ⚠️  VISION SCAN DEGRADED ({provider}) — "
+            f"{scan_errors.count} API call(s) hard-failed.\n"
             "      Visual candidates are INCOMPLETE; affected clips fall back to\n"
             "      telemetry/filler only. Failed clips were NOT cached, so a\n"
             "      re-run will retry them once the API is healthy.\n"
@@ -1179,6 +1212,8 @@ def scan_ride(
             "  " + "!" * 64 + "\n"
         )
 
-    candidates = _hits_to_segments(all_hits, synced_clips, ride, config)
-    print(f"  Gemini scan: {len(candidates)} interesting moments")
+    candidates = _hits_to_segments(
+        all_hits, synced_clips, ride, config, provider=provider,
+    )
+    print(f"  Vision scan ({provider}): {len(candidates)} interesting moments")
     return candidates

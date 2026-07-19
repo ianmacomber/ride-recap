@@ -84,11 +84,15 @@ def _extract_features(seg_data: dict) -> dict[str, float]:
     sources = seg_data.get("sources", [])
     source_count = float(len(sources)) if sources else 1.0
 
-    # Source presence flags
-    has_gemini = float("gemini" in sources)
+    # Source presence flags.
+    # Feature name stays ``has_gemini`` for training-file / weight compat;
+    # compute as any vision provider so OpenAI-scored clips share the signal.
+    from .models import VISION_SOURCES
+    has_gemini = float(bool(VISION_SOURCES.intersection(sources)))
     has_telemetry = float("telemetry" in sources)
     has_strava = float("strava" in sources)
     has_label = float("label" in sources)
+
 
     # Strava stars (from notes, if present)
     star_count = 0.0

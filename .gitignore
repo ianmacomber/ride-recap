@@ -24,12 +24,14 @@ selected_candidates.json
 .claude/
 src/gopro_garmin_pipeline/design/proposals/
 .gemini_cache/
+.openai_cache/
 moments.json
 ride_labels.json
 
 # The published sample ride is the exception: its sidecars are committed so
 # the labels and baseline ratings are readable without downloading video.
 !samples/**/.gemini_cache/
+!samples/**/.openai_cache/
 !samples/**/moments.json
 !samples/**/ride_labels.json
 
