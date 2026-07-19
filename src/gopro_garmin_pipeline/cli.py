@@ -967,23 +967,26 @@ def garmin_download(activity_id: int | None, latest: bool, target_date, output_d
 @click.argument("date_folder", type=click.Path(exists=True, path_type=Path))
 @click.option("--offset", default=0.0, help="Time offset in seconds (FIT - GoPro)")
 def compare(date_folder: Path, offset: float):
-    """Compare human labels vs Gemini scan output for a ride.
+    """Compare human labels vs vision-model scan output for a ride.
 
-    DATE_FOLDER: Date folder containing ride_labels.json and .gemini_cache/
+    DATE_FOLDER: Date folder containing ride_labels.json and .{provider}_cache/
 
     Produces a structured comparison report showing:
-      - Matched moments (both human and Gemini agree)
-      - Label-only moments (Gemini missed)
-      - Gemini-only moments (user didn't flag)
+      - Matched moments (both human and model agree)
+      - Label-only moments (model missed)
+      - Model-only moments (user didn't flag)
       - Systematic pattern analysis
+
+    Report is written as prompt_eval_{provider}_{model}.json for the
+    active MODEL_PROVIDER.
     """
-    from .prompt_eval import compare_ride, enrich_gemini_hits_with_ride_time
+    from .prompt_eval import compare_ride, enrich_model_hits_with_ride_time
 
-    # Enrich Gemini cache with ride-relative timestamps for alignment
-    click.echo("Enriching Gemini cache with ride timestamps...")
-    enrich_gemini_hits_with_ride_time(date_folder, offset)
+    # Enrich provider cache with ride-relative timestamps for alignment
+    click.echo("Enriching model cache with ride timestamps...")
+    enrich_model_hits_with_ride_time(date_folder, offset)
 
-    click.echo("\nComparing labels vs Gemini scan...")
+    click.echo("\nComparing labels vs model scan...")
     report = compare_ride(date_folder)
     report.print_summary()
 
@@ -991,13 +994,13 @@ def compare(date_folder: Path, offset: float):
 @main.command("eval-prompt")
 @click.argument("date_folders", nargs=-1, type=click.Path(exists=True, path_type=Path))
 def eval_prompt_cmd(date_folders: tuple[Path, ...]):
-    """Analyze label/Gemini comparison and suggest prompt improvements.
+    """Analyze label/model comparison and suggest prompt improvements.
 
-    DATE_FOLDERS: One or more ride folders with prompt_eval.json files.
+    DATE_FOLDERS: One or more ride folders with comparison reports.
     Run 'compare' first to generate comparison reports.
 
-    Uses Gemini to analyze systematic patterns in what the scan prompt
-    gets right vs wrong, and suggests specific prompt changes.
+    Uses the active MODEL_PROVIDER to analyze systematic patterns in what
+    the scan prompt gets right vs wrong, and suggests specific changes.
     """
     from .prompt_eval import eval_prompt
 

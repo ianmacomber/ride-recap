@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -370,16 +371,22 @@ def test_cache_files_filter_by_openai_model(tmp_path, monkeypatch):
     from gopro_garmin_pipeline.gemini_scan import _model_fingerprint
     from gopro_garmin_pipeline.prompt_eval import (
         _cache_files_for_active_model,
-        _load_gemini_hits,
+        _load_model_hits,
     )
 
     cache = tmp_path / ".openai_cache"
     cache.mkdir()
     fp_a = _model_fingerprint("gpt-4.1-mini")
     fp_b = _model_fingerprint("gpt-5-mini")
-    (cache / f"GX01_v10_m{fp_a}.json").write_text('[{"clip_name": "a"}]')
-    (cache / f"GX01_v10_m{fp_b}.json").write_text('[{"clip_name": "b"}]')
-    (cache / f"GX02_v10_m{fp_a}_ldeadbeef.json").write_text('[{"clip_name": "a2"}]')
+    (cache / f"GX01_v10_m{fp_a}.json").write_text(
+        '[{"clip_name": "GX010001.MP4"}]',
+    )
+    (cache / f"GX01_v10_m{fp_b}.json").write_text(
+        '[{"clip_name": "GX010099.MP4"}]',
+    )
+    (cache / f"GX02_v10_m{fp_a}_ldeadbeef.json").write_text(
+        '[{"clip_name": "GX010002.MP4"}]',
+    )
 
     matched = _cache_files_for_active_model(cache, "openai", "gpt-4.1-mini")
     assert {p.name for p in matched} == {
@@ -392,27 +399,407 @@ def test_cache_files_filter_by_openai_model(tmp_path, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     cfg.get_settings.cache_clear()
     try:
-        hits = _load_gemini_hits(tmp_path)
+        hits = _load_model_hits(tmp_path)
         names = {h["clip_name"] for h in hits}
-        assert names == {"a", "a2"}
-        assert "b" not in names
+        assert names == {"GX010001.MP4", "GX010002.MP4"}
+        assert "GX010099.MP4" not in names
     finally:
         cfg.get_settings.cache_clear()
 
 
 def test_load_hits_no_cross_provider_fallback(tmp_path, monkeypatch):
     from gopro_garmin_pipeline import config as cfg
-    from gopro_garmin_pipeline.prompt_eval import _load_gemini_hits
+    from gopro_garmin_pipeline.prompt_eval import _load_model_hits
 
     gem = tmp_path / ".gemini_cache"
     gem.mkdir()
-    (gem / "GX01_v10.json").write_text('[{"clip_name": "gemini-only"}]')
+    (gem / "GX01_v10.json").write_text('[{"clip_name": "GX010001.MP4"}]')
 
     monkeypatch.setenv("MODEL_PROVIDER", "openai")
     monkeypatch.setenv("OPENAI_MODEL", "gpt-4.1-mini")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     cfg.get_settings.cache_clear()
     try:
-        assert _load_gemini_hits(tmp_path) == []
+        assert _load_model_hits(tmp_path) == []
     finally:
         cfg.get_settings.cache_clear()
+
+
+# ─── Compare naming / local chapters / report filenames ────────
+
+
+def test_sanitize_model_id_strips_unsafe_chars():
+    import hashlib
+
+    from gopro_garmin_pipeline.prompt_eval import (
+        _report_filename,
+        _sanitize_model_id,
+    )
+
+    assert _sanitize_model_id("gpt-4.1-mini") == "gpt-4.1-mini"
+    # Changed-by-sanitize ids get a stable hash suffix
+    raw = "org/model:v1"
+    fp = hashlib.sha1(raw.encode()).hexdigest()[:8]
+    assert _sanitize_model_id(raw) == f"org-model-v1_{fp}"
+    assert "/" not in _sanitize_model_id("x/y")
+    assert "\\" not in _sanitize_model_id("x\\y")
+    name = _report_filename("openai", "org/weird model:v2")
+    assert name.startswith("prompt_eval_openai_org-weird-model-v2_")
+    assert name.endswith(".json")
+    assert "/" not in name
+    assert " " not in name
+
+
+def test_sanitize_model_id_avoids_collision_with_hash_suffix():
+    from gopro_garmin_pipeline.prompt_eval import (
+        _report_filename,
+        _sanitize_model_id,
+    )
+
+    a = _sanitize_model_id("org/model:v1")
+    b = _sanitize_model_id("org-model-v1")
+    assert a != b
+    assert b == "org-model-v1"  # already safe — no hash
+    assert a.startswith("org-model-v1_")
+    assert _report_filename("openai", "org/model:v1") != _report_filename(
+        "openai", "org-model-v1",
+    )
+
+
+def test_load_hits_filters_to_local_chapters(tmp_path, monkeypatch):
+    from gopro_garmin_pipeline import config as cfg
+    from gopro_garmin_pipeline.prompt_eval import _load_model_hits
+
+    cache = tmp_path / ".gemini_cache"
+    cache.mkdir()
+    (cache / "GX01_v10.json").write_text(
+        json.dumps([
+            {"clip_name": "GX010001.MP4", "ride_time_secs": 10},
+            {"clip_name": "GX010002.MP4", "ride_time_secs": 20},
+        ]),
+    )
+    (tmp_path / "GX010001.MP4").write_bytes(b"fake")
+
+    monkeypatch.setenv("MODEL_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    cfg.get_settings.cache_clear()
+    try:
+        hits = _load_model_hits(tmp_path)
+        assert [h["clip_name"] for h in hits] == ["GX010001.MP4"]
+    finally:
+        cfg.get_settings.cache_clear()
+
+
+def test_load_hits_keeps_all_when_no_local_mp4(tmp_path, monkeypatch):
+    from gopro_garmin_pipeline import config as cfg
+    from gopro_garmin_pipeline.prompt_eval import _load_model_hits
+
+    cache = tmp_path / ".gemini_cache"
+    cache.mkdir()
+    (cache / "GX01_v10.json").write_text(
+        json.dumps([
+            {"clip_name": "GX010001.MP4"},
+            {"clip_name": "GX010002.MP4"},
+        ]),
+    )
+
+    monkeypatch.setenv("MODEL_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    cfg.get_settings.cache_clear()
+    try:
+        hits = _load_model_hits(tmp_path)
+        assert {h["clip_name"] for h in hits} == {
+            "GX010001.MP4",
+            "GX010002.MP4",
+        }
+    finally:
+        cfg.get_settings.cache_clear()
+
+
+def test_filter_labels_keeps_missing_clip_name():
+    from gopro_garmin_pipeline.prompt_eval import _filter_labels_to_local_chapters
+
+    local = {"GX010001.MP4"}
+    labels = [
+        {"notes": "legacy", "ride_time_secs": 1},
+        {"clip_name": "", "notes": "empty", "ride_time_secs": 2},
+        {"clip_name": "GX010001.MP4", "notes": "present", "ride_time_secs": 3},
+        {"clip_name": "GX010099.MP4", "notes": "absent", "ride_time_secs": 4},
+    ]
+    kept = _filter_labels_to_local_chapters(labels, local)
+    notes = [lab["notes"] for lab in kept]
+    assert notes == ["legacy", "empty", "present"]
+
+
+def test_align_moments_openai_model_only_source():
+    from gopro_garmin_pipeline.prompt_eval import _align_moments
+
+    labels = []
+    hits = [{
+        "clip_name": "GX010001.MP4",
+        "ride_time_secs": 100,
+        "visual": 8,
+        "action": 3,
+        "clip_type": "scenery",
+        "reason": "view",
+    }]
+    matched, label_only, model_only = _align_moments(
+        labels, hits, provider="openai",
+    )
+    assert matched == []
+    assert label_only == []
+    assert len(model_only) == 1
+    assert model_only[0].source == "openai"
+    assert model_only[0].model_visual == 8
+
+
+def test_compare_report_emits_model_fields_and_scoped_filename(tmp_path, monkeypatch):
+    from gopro_garmin_pipeline import config as cfg
+    from gopro_garmin_pipeline.prompt_eval import (
+        CompareHit,
+        _report_filename,
+        compare_ride,
+    )
+
+    cache = tmp_path / ".openai_cache"
+    cache.mkdir()
+    from gopro_garmin_pipeline.gemini_scan import _model_fingerprint
+
+    fp = _model_fingerprint("gpt-4.1-mini")
+    (cache / f"GX01_v10_m{fp}.json").write_text(
+        json.dumps([{
+            "clip_name": "GX010001.MP4",
+            "ride_time_secs": 50,
+            "visual": 7,
+            "action": 2,
+            "clip_type": "scenery",
+            "reason": "ridge",
+        }]),
+    )
+    (tmp_path / "GX010001.MP4").write_bytes(b"fake")
+    (tmp_path / "ride_labels.json").write_text("[]")
+
+    monkeypatch.setenv("MODEL_PROVIDER", "openai")
+    monkeypatch.setenv("OPENAI_MODEL", "gpt-4.1-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    cfg.get_settings.cache_clear()
+    try:
+        report = compare_ride(tmp_path)
+        assert report.provider == "openai"
+        assert report.n_model_hits == 1
+        d = report.to_dict()
+        assert d["summary"]["n_model_hits"] == 1
+        assert d["summary"]["provider"] == "openai"
+        assert "model_only" in d
+        assert "gemini_only" not in d
+        assert d["model_only"][0]["source"] == "openai"
+        assert d["model_only"][0]["model_visual"] == 7
+
+        scoped = tmp_path / _report_filename("openai", "gpt-4.1-mini")
+        assert scoped.exists()
+        assert not (tmp_path / "prompt_eval.json").exists()
+    finally:
+        cfg.get_settings.cache_clear()
+
+    hit = CompareHit(
+        ride_time_secs=1, source="both",
+        model_visual=5, model_action=4, model_clip_type="x", model_reason="y",
+    )
+    assert "model_visual" in hit.to_dict()
+    assert "gemini_visual" not in hit.to_dict()
+
+
+def test_scoped_report_takes_precedence_over_legacy(tmp_path, monkeypatch):
+    from gopro_garmin_pipeline import config as cfg
+    from gopro_garmin_pipeline.prompt_eval import (
+        _load_all_reports,
+        _report_filename,
+    )
+
+    scoped = {
+        "summary": {
+            "provider": "gemini",
+            "model": "gemini-3.5-flash",
+            "n_labels": 1,
+            "n_model_hits": 1,
+            "n_matched": 1,
+            "n_label_only": 0,
+            "n_model_only": 0,
+        },
+        "matched": [],
+        "label_only": [],
+        "model_only": [{"source": "scoped"}],
+        "patterns": {},
+    }
+    legacy = {
+        "summary": {
+            "n_labels": 9,
+            "n_gemini_hits": 9,
+            "n_matched": 0,
+            "n_label_only": 0,
+            "n_gemini_only": 9,
+        },
+        "gemini_only": [{"source": "legacy"}],
+        "label_only": [],
+        "matched": [],
+        "patterns": {},
+    }
+    (tmp_path / _report_filename("gemini", "gemini-3.5-flash")).write_text(
+        json.dumps(scoped),
+    )
+    (tmp_path / "prompt_eval.json").write_text(json.dumps(legacy))
+
+    monkeypatch.setenv("MODEL_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.5-flash")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    cfg.get_settings.cache_clear()
+    try:
+        reports = _load_all_reports([tmp_path])
+        assert len(reports) == 1
+        assert reports[0]["model_only"][0]["source"] == "scoped"
+    finally:
+        cfg.get_settings.cache_clear()
+
+
+def test_openai_does_not_fallback_to_legacy_gemini_report(tmp_path, monkeypatch):
+    from gopro_garmin_pipeline import config as cfg
+    from gopro_garmin_pipeline.prompt_eval import _load_all_reports
+
+    (tmp_path / "prompt_eval.json").write_text(json.dumps({
+        "summary": {
+            "n_labels": 1,
+            "n_gemini_hits": 1,
+            "n_matched": 0,
+            "n_label_only": 0,
+            "n_gemini_only": 1,
+        },
+        "gemini_only": [{"gemini_visual": 8}],
+        "label_only": [],
+        "matched": [],
+        "patterns": {},
+    }))
+
+    monkeypatch.setenv("MODEL_PROVIDER", "openai")
+    monkeypatch.setenv("OPENAI_MODEL", "gpt-4.1-mini")
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    cfg.get_settings.cache_clear()
+    try:
+        assert _load_all_reports([tmp_path]) == []
+    finally:
+        cfg.get_settings.cache_clear()
+
+
+def test_gemini_falls_back_to_legacy_prompt_eval(tmp_path, monkeypatch):
+    from gopro_garmin_pipeline import config as cfg
+    from gopro_garmin_pipeline.prompt_eval import _load_all_reports
+
+    (tmp_path / "prompt_eval.json").write_text(json.dumps({
+        "summary": {
+            "n_labels": 1,
+            "n_gemini_hits": 2,
+            "n_matched": 0,
+            "n_label_only": 1,
+            "n_gemini_only": 1,
+        },
+        "gemini_only": [{"gemini_visual": 8, "gemini_action": 2}],
+        "label_only": [],
+        "matched": [],
+        "patterns": {"gemini_misses_by_type": {"scenery": 1}},
+    }))
+
+    monkeypatch.setenv("MODEL_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.5-flash")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    cfg.get_settings.cache_clear()
+    try:
+        reports = _load_all_reports([tmp_path])
+        assert len(reports) == 1
+        r = reports[0]
+        assert r["summary"]["n_model_hits"] == 2
+        assert r["summary"]["n_model_only"] == 1
+        assert "n_gemini_hits" not in r["summary"]
+        assert r["summary"]["provider"] == "gemini"
+        assert "model_only" in r
+        assert r["model_only"][0]["model_visual"] == 8
+        assert "gemini_visual" not in r["model_only"][0]
+        assert "model_misses_by_type" in r["patterns"]
+    finally:
+        cfg.get_settings.cache_clear()
+
+
+def test_legacy_report_rejects_mismatching_model(tmp_path, monkeypatch):
+    """Legacy prompt_eval.json with an explicit different model must be rejected."""
+    from gopro_garmin_pipeline import config as cfg
+    from gopro_garmin_pipeline.prompt_eval import _load_all_reports
+
+    (tmp_path / "prompt_eval.json").write_text(json.dumps({
+        "summary": {
+            "provider": "gemini",
+            "model": "gemini-2.0-flash",
+            "n_labels": 1,
+            "n_model_hits": 1,
+            "n_matched": 0,
+            "n_label_only": 0,
+            "n_model_only": 1,
+        },
+        "model_only": [{"model_visual": 8}],
+        "label_only": [],
+        "matched": [],
+        "patterns": {},
+    }))
+
+    monkeypatch.setenv("MODEL_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.5-flash")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    cfg.get_settings.cache_clear()
+    try:
+        assert _load_all_reports([tmp_path]) == []
+    finally:
+        cfg.get_settings.cache_clear()
+
+
+def test_normalize_and_aggregate_mixed_old_new_schemas():
+    from gopro_garmin_pipeline.prompt_eval import (
+        _aggregate_reports,
+        _normalize_report,
+    )
+
+    old = _normalize_report({
+        "summary": {
+            "n_labels": 2,
+            "n_gemini_hits": 3,
+            "n_matched": 1,
+            "n_label_only": 1,
+            "n_gemini_only": 2,
+        },
+        "label_only": [{"label_type": "scenery"}],
+        "gemini_only": [
+            {"gemini_visual": 9, "gemini_action": 1},
+            {"gemini_visual": 4, "gemini_action": 1},
+        ],
+        "matched": [],
+        "patterns": {"avg_gemini_only_scores": {"visual": 6.5, "action": 1}},
+    })
+    new = {
+        "summary": {
+            "provider": "openai",
+            "model": "gpt-4.1-mini",
+            "n_labels": 1,
+            "n_model_hits": 1,
+            "n_matched": 1,
+            "n_label_only": 0,
+            "n_model_only": 0,
+        },
+        "label_only": [],
+        "model_only": [],
+        "matched": [{"source": "both", "model_visual": 7}],
+        "patterns": {},
+    }
+    agg = _aggregate_reports([old, new])
+    assert agg["n_rides"] == 2
+    assert agg["n_labels"] == 3
+    assert agg["n_model_hits"] == 4
+    assert agg["n_matched"] == 2
+    assert agg["n_model_only"] == 2
+    assert agg["all_model_only"][0]["model_visual"] == 9
+    assert "gemini_only" not in old
