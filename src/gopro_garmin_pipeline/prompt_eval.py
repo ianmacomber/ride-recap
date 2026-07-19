@@ -63,6 +63,8 @@ def _active_model_id(settings) -> str:
     provider = _active_provider(settings)
     if provider == "openai":
         return settings.openai_model
+    if provider == "local":
+        return settings.local_model
     return settings.gemini_model
 
 

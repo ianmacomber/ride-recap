@@ -7,7 +7,7 @@ from typing import Protocol, runtime_checkable
 from pydantic import BaseModel, Field
 
 
-VISION_SOURCES = frozenset({"gemini", "openai"})
+VISION_SOURCES = frozenset({"gemini", "openai", "local"})
 
 _REQUEST_TIMEOUT_S = 180.0
 

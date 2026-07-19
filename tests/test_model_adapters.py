@@ -13,12 +13,16 @@ from gopro_garmin_pipeline.gemini_scan import _clip_cache_key, _model_fingerprin
 from gopro_garmin_pipeline.models import (
     VISION_SOURCES,
     GeminiAdapter,
+    LocalOpenAIAdapter,
     OpenAIAdapter,
     cache_dir_name,
     get_model_adapter,
     provider_api_key,
 )
 from gopro_garmin_pipeline.models.base import ClipRubric, CoarseFrameBatch, FrameScore
+from gopro_garmin_pipeline.models.local_vlm import (
+    _reset_local_request_semaphore_for_tests,
+)
 
 
 # ─── Factory / config ─────────────────────────────────────────
@@ -28,6 +32,21 @@ def test_provider_api_key_selects_by_model_provider():
     assert provider_api_key(g) == "gk"
     o = Settings(_env_file=None, model_provider="openai", gemini_api_key="gk", openai_api_key="ok")
     assert provider_api_key(o) == "ok"
+    ready = Settings(
+        _env_file=None,
+        model_provider="local",
+        local_base_url="http://localhost:8080/v1",
+        local_model="qwen2.5-vl",
+        local_api_key="local",
+    )
+    assert provider_api_key(ready) == "local"
+    incomplete = Settings(
+        _env_file=None,
+        model_provider="local",
+        local_base_url="http://localhost:8080/v1",
+        local_model="",
+    )
+    assert provider_api_key(incomplete) == ""
 
 
 def test_get_model_adapter_gemini():
@@ -55,6 +74,39 @@ def test_get_model_adapter_openai():
     assert adapter.model_id == "gpt-4.1-mini"
 
 
+def test_get_model_adapter_local():
+    _reset_local_request_semaphore_for_tests()
+    s = Settings(
+        _env_file=None,
+        model_provider="local",
+        local_base_url="http://localhost:8080/v1",
+        local_model="mlx-community/Qwen2.5-VL-3B",
+        local_api_key="local",
+        local_max_concurrency=1,
+        local_timeout_seconds=600,
+    )
+    with patch("openai.OpenAI") as OpenAI:
+        OpenAI.return_value = MagicMock()
+        adapter = get_model_adapter(s)
+    assert adapter.name == "local"
+    assert adapter.model_id == "mlx-community/Qwen2.5-VL-3B"
+    OpenAI.assert_called_once()
+    kwargs = OpenAI.call_args.kwargs
+    assert kwargs["base_url"] == "http://localhost:8080/v1"
+    assert kwargs["timeout"] == 600.0
+
+
+def test_get_model_adapter_local_requires_model():
+    s = Settings(
+        _env_file=None,
+        model_provider="local",
+        local_base_url="http://localhost:8080/v1",
+        local_model="",
+    )
+    with pytest.raises(ValueError, match="LOCAL_MODEL"):
+        get_model_adapter(s)
+
+
 def test_get_model_adapter_unknown_raises():
     s = Settings(_env_file=None, model_provider="anthropic", gemini_api_key="x")
     with pytest.raises(ValueError, match="Unknown MODEL_PROVIDER"):
@@ -64,6 +116,7 @@ def test_get_model_adapter_unknown_raises():
 def test_cache_dir_name():
     assert cache_dir_name("gemini") == ".gemini_cache"
     assert cache_dir_name("openai") == ".openai_cache"
+    assert cache_dir_name("local") == ".local_cache"
 
 
 # ─── Cache keys ───────────────────────────────────────────────
@@ -86,6 +139,12 @@ def test_openai_cache_key_includes_model_fingerprint():
     other = _clip_cache_key("GX010346.MP4", provider="openai", model_id="gpt-5-mini")
     assert other != key
     assert f"m{_model_fingerprint('gpt-5-mini')}" in other
+
+
+def test_local_cache_key_includes_model_fingerprint():
+    fp = _model_fingerprint("qwen2.5-vl")
+    key = _clip_cache_key("GX010346.MP4", provider="local", model_id="qwen2.5-vl")
+    assert key == f"GX010346_v10_m{fp}.json"
 
 
 # ─── Transient errors ─────────────────────────────────────────
@@ -121,6 +180,46 @@ def test_openai_is_transient_error():
     assert adapter.is_transient_error(FakeServer("backend error"))
     assert adapter.is_transient_error(Exception("connection Timeout"))
     assert not adapter.is_transient_error(FakeBadRequest("bad request"))
+
+
+def test_local_is_transient_error_skips_connection_refusal():
+    adapter = object.__new__(LocalOpenAIAdapter)
+
+    class FakeTimeout(Exception):
+        pass
+
+    class FakeServer(Exception):
+        status_code = 503
+
+    class FakeRateLimit(Exception):
+        status_code = 429
+
+    assert not adapter.is_transient_error(
+        ConnectionError("Local VLM unreachable at http://localhost:8080/v1")
+    )
+    assert not adapter.is_transient_error(Exception("Connection refused"))
+    assert not adapter.is_transient_error(Exception("Failed to connect to localhost"))
+    assert adapter.is_transient_error(FakeTimeout("Request Timeout"))
+    assert adapter.is_transient_error(FakeServer("backend error"))
+    assert adapter.is_transient_error(FakeRateLimit("rate limited"))
+
+
+def test_local_is_transient_error_skips_permanent_model_configuration_errors():
+    adapter = object.__new__(LocalOpenAIAdapter)
+
+    class FakeLoadFailure(Exception):
+        status_code = 500
+
+    class FakeNotFound(Exception):
+        status_code = 404
+
+    assert not adapter.is_transient_error(
+        FakeLoadFailure(
+            "Failed to load model: Repo id must use alphanumeric chars: '<your-vlm>'"
+        )
+    )
+    assert not adapter.is_transient_error(FakeNotFound("model not found"))
+    assert not adapter.is_transient_error(Exception("repository not found"))
 
 
 def test_call_with_retry_uses_adapter_transient(monkeypatch):
@@ -275,6 +374,176 @@ def test_gemini_score_frames_parses_list():
     assert out[0]["frame_index"] == 1
 
 
+# ─── Local OpenAI-compatible adapter ──────────────────────────
+
+def _local_adapter_with_client(client) -> LocalOpenAIAdapter:
+    _reset_local_request_semaphore_for_tests()
+    adapter = object.__new__(LocalOpenAIAdapter)
+    adapter.model_id = "qwen2.5-vl"
+    adapter.base_url = "http://localhost:8080/v1"
+    adapter._timeout = 600.0
+    adapter._semaphore = __import__(
+        "gopro_garmin_pipeline.models.local_vlm", fromlist=["_get_local_request_semaphore"]
+    )._get_local_request_semaphore(1)
+    adapter._client = client
+    return adapter
+
+
+def _chat_response(content: str):
+    return MagicMock(
+        choices=[MagicMock(message=MagicMock(content=content))],
+    )
+
+
+def test_local_score_frames_uses_json_schema_response_format():
+    client = MagicMock()
+    payload = {
+        "frames": [{
+            "frame_index": 0, "visual": 5, "action": 3,
+            "clip_type": "landmark", "crop_x": 50, "reason": "bridge",
+        }],
+    }
+    client.chat.completions.create.return_value = _chat_response(json.dumps(payload))
+    adapter = _local_adapter_with_client(client)
+
+    out = adapter.score_frames(images=[b"\xff\xd8fake"], system="sys", user="user")
+    assert out[0]["frame_index"] == 0
+    assert out[0]["visual"] == 5
+
+    kwargs = client.chat.completions.create.call_args.kwargs
+    assert "response_format" in kwargs
+    assert kwargs["response_format"]["type"] == "json_schema"
+    assert kwargs["response_format"]["json_schema"]["name"] == "coarse_frame_batch"
+    messages = kwargs["messages"]
+    assert messages[0]["role"] == "system"
+    user_content = messages[1]["content"]
+    assert any(p.get("type") == "image_url" for p in user_content)
+    assert any(p.get("type") == "text" for p in user_content)
+
+
+def test_local_score_clip_rubric_structured():
+    client = MagicMock()
+    payload = {
+        "light": 8, "composition": 7, "motion": 9, "scenery": 6, "subject": 9,
+        "peak_offset": 0.5, "clip_type": "action", "crop_x": 50, "reason": "sprint",
+    }
+    client.chat.completions.create.return_value = _chat_response(json.dumps(payload))
+    adapter = _local_adapter_with_client(client)
+
+    out = adapter.score_clip_rubric(images=[b"x"], system="sys", user="user")
+    assert out["motion"] == 9
+    assert out["clip_type"] == "action"
+
+
+def test_local_complete_json_narrative_and_eval():
+    client = MagicMock()
+    client.chat.completions.create.return_value = _chat_response(
+        json.dumps({"indices": [0, 5, 3]}),
+    )
+    adapter = _local_adapter_with_client(client)
+    assert adapter.complete_json(prompt="pick clips") == [0, 5, 3]
+
+    client.chat.completions.create.return_value = _chat_response(
+        json.dumps({"analysis": "over-scores tunnels", "prompt_changes": []}),
+    )
+    out = adapter.complete_json(prompt="eval", system="you are an expert")
+    assert out["analysis"] == "over-scores tunnels"
+
+
+def test_local_falls_back_when_structured_format_rejected():
+    client = MagicMock()
+
+    class UnsupportedFormat(Exception):
+        status_code = 400
+
+        def __str__(self):
+            return "Unsupported response_format type: 'json_schema'"
+
+    client.chat.completions.create.side_effect = [
+        UnsupportedFormat(),
+        _chat_response(json.dumps([
+            {"frame_index": 2, "visual": 4, "action": 4, "clip_type": "x", "crop_x": 50, "reason": "y"},
+        ])),
+    ]
+    adapter = _local_adapter_with_client(client)
+
+    out = adapter.score_frames(images=[b"x"], system="sys", user="user")
+    assert out[0]["frame_index"] == 2
+    assert client.chat.completions.create.call_count == 2
+    second_kwargs = client.chat.completions.create.call_args_list[1].kwargs
+    assert "response_format" not in second_kwargs
+
+
+def test_local_invalid_freeform_raises_not_empty():
+    client = MagicMock()
+
+    class UnsupportedFormat(Exception):
+        status_code = 400
+
+        def __str__(self):
+            return "Unsupported response_format type: 'json_schema'"
+
+    client.chat.completions.create.side_effect = [
+        UnsupportedFormat(),
+        _chat_response("sorry, I cannot help with that"),
+    ]
+    adapter = _local_adapter_with_client(client)
+
+    with pytest.raises(ValueError, match="unparseable|expected"):
+        adapter.score_frames(images=[b"x"], system="sys", user="user")
+
+
+def test_local_wrong_shape_fine_pass_raises():
+    client = MagicMock()
+
+    class UnsupportedFormat(Exception):
+        status_code = 400
+
+        def __str__(self):
+            return "Unsupported response_format type: 'json_schema'"
+
+    client.chat.completions.create.side_effect = [
+        UnsupportedFormat(),
+        _chat_response("[]"),
+    ]
+    adapter = _local_adapter_with_client(client)
+
+    with pytest.raises(ValueError, match="fine pass"):
+        adapter.score_clip_rubric(images=[b"x"], system="sys", user="user")
+
+
+def test_local_connection_refused_raises_clear_error():
+    client = MagicMock()
+    client.chat.completions.create.side_effect = Exception("Connection refused")
+    adapter = _local_adapter_with_client(client)
+
+    with pytest.raises(ConnectionError, match="Local VLM unreachable"):
+        adapter.score_frames(images=[b"x"], system="sys", user="user")
+
+
+def test_local_shared_semaphore_across_adapter_instances():
+    """Two adapters must share one process-wide semaphore."""
+    _reset_local_request_semaphore_for_tests()
+    from gopro_garmin_pipeline.models import local_vlm as lo
+
+    with patch("openai.OpenAI") as OpenAI:
+        OpenAI.return_value = MagicMock()
+        a = LocalOpenAIAdapter(
+            base_url="http://localhost:8080/v1",
+            api_key="local",
+            model="m1",
+            max_concurrency=1,
+        )
+        b = LocalOpenAIAdapter(
+            base_url="http://localhost:8080/v1",
+            api_key="local",
+            model="m2",
+            max_concurrency=1,
+        )
+    assert a._semaphore is b._semaphore
+    assert lo._LOCAL_SEMAPHORE_LIMIT == 1
+
+
 # ─── Downstream compat ────────────────────────────────────────
 
 def test_learned_ranker_has_gemini_true_for_openai():
@@ -301,7 +570,30 @@ def test_learned_ranker_has_gemini_false_without_vision():
 
 
 def test_vision_sources_constant():
-    assert VISION_SOURCES == frozenset({"gemini", "openai"})
+    assert VISION_SOURCES == frozenset({"gemini", "openai", "local"})
+
+
+def test_learned_ranker_has_gemini_true_for_local():
+    from gopro_garmin_pipeline.learned_ranker import _extract_features
+
+    feats = _extract_features({
+        "score": 7.0,
+        "sources": ["local", "telemetry"],
+        "notes": "",
+        "rubric": {"composition": 8, "scenery": 7, "motion": 6, "subject": 5},
+    })
+    assert feats["has_gemini"] == 1.0
+
+
+def test_active_model_id_local():
+    from gopro_garmin_pipeline.prompt_eval import _active_model_id
+
+    s = Settings(
+        _env_file=None,
+        model_provider="local",
+        local_model="mlx-community/Qwen2.5-VL-3B",
+    )
+    assert _active_model_id(s) == "mlx-community/Qwen2.5-VL-3B"
 
 
 def test_hits_to_segments_uses_provider_identity():
