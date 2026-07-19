@@ -1,0 +1,59 @@
+[
+  {
+    "clip_name": "GX010336.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 5.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 5,
+      "motion": 5,
+      "scenery": 4,
+      "subject": 4
+    },
+    "raw_sum": 22,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Early morning transit through urban park path",
+    "ride_time_secs": 1503.0
+  },
+  {
+    "clip_name": "GX010336.MP4",
+    "video_start": 18.0,
+    "video_end": 28.0,
+    "anchor_video_secs": 23.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 5,
+      "motion": 5,
+      "scenery": 6,
+      "subject": 4
+    },
+    "raw_sum": 24,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Cruising toward bridge at golden hour, motion blur on road",
+    "ride_time_secs": 1521.0
+  },
+  {
+    "clip_name": "GX010336.MP4",
+    "video_start": 45.0,
+    "video_end": 55.0,
+    "anchor_video_secs": 50.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 6,
+      "composition": 5,
+      "motion": 5,
+      "scenery": 4,
+      "subject": 4
+    },
+    "raw_sum": 24,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Steady pace under early evening sky, rider centered on road",
+    "ride_time_secs": 1548.0
+  }
+]

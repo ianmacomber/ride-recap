@@ -1,0 +1,154 @@
+[
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 5.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 7,
+      "composition": 8,
+      "motion": 6,
+      "scenery": 7,
+      "subject": 5
+    },
+    "raw_sum": 33,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Rising sun through trees on a gentle climb",
+    "ride_time_secs": 2894.0
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 19.0,
+    "video_end": 29.0,
+    "anchor_video_secs": 24.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 7,
+      "composition": 8,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 4
+    },
+    "raw_sum": 31,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Sunlit trail with lake view, rider cruising at 31mph",
+    "ride_time_secs": 2913.0
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 45.0,
+    "video_end": 55.0,
+    "anchor_video_secs": 50.5,
+    "peak_offset": 0.55,
+    "rubric": {
+      "light": 7,
+      "composition": 8,
+      "motion": 5,
+      "scenery": 6,
+      "subject": 4
+    },
+    "raw_sum": 30,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Climbing uphill through green forest, rider visible",
+    "ride_time_secs": 2939.5
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 90.0,
+    "video_end": 100.0,
+    "anchor_video_secs": 95.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 6,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 4
+    },
+    "raw_sum": 22,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Cruising under shaded canopy, no landmark or drama",
+    "ride_time_secs": 2984.0
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 135.0,
+    "video_end": 145.0,
+    "anchor_video_secs": 140.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 6,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 4
+    },
+    "raw_sum": 22,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Cruising uphill, rider barely visible behind foliage",
+    "ride_time_secs": 3029.0
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 180.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 185.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 6,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 6,
+      "subject": 5
+    },
+    "raw_sum": 29,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Climbing a tree-lined hillside road, rider at 246W",
+    "ride_time_secs": 3074.0
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 225.0,
+    "video_end": 235.0,
+    "anchor_video_secs": 230.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 4,
+      "subject": 4
+    },
+    "raw_sum": 23,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Cruising through shaded forest with dappled light",
+    "ride_time_secs": 3119.0
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 246.001,
+    "video_end": 256.001,
+    "anchor_video_secs": 251.00099999999998,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 6,
+      "subject": 4
+    },
+    "raw_sum": 29,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Cruising through shaded forest with dappled light, rider centered",
+    "ride_time_secs": 3140.0
+  }
+]

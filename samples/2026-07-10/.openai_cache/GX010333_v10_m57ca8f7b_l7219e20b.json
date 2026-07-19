@@ -1,0 +1,40 @@
+[
+  {
+    "clip_name": "GX010333.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 7.0,
+    "peak_offset": 0.7,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 3
+    },
+    "raw_sum": 28,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Pleasant early evening light with urban park and city buildings",
+    "ride_time_secs": 329.0
+  },
+  {
+    "clip_name": "GX010333.MP4",
+    "video_start": 25.0,
+    "video_end": 55.0,
+    "anchor_video_secs": 29.5,
+    "peak_offset": 0.15,
+    "rubric": {
+      "light": 5,
+      "composition": 5,
+      "motion": 5,
+      "scenery": 3,
+      "subject": 2
+    },
+    "raw_sum": 20,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Ride enters and continues under an urban overpass, enclosed space lowers scenery",
+    "ride_time_secs": 351.5
+  }
+]

@@ -25,6 +25,7 @@ selected_candidates.json
 src/gopro_garmin_pipeline/design/proposals/
 .gemini_cache/
 .openai_cache/
+.local_cache/
 moments.json
 ride_labels.json
 
@@ -32,6 +33,7 @@ ride_labels.json
 # the labels and baseline ratings are readable without downloading video.
 !samples/**/.gemini_cache/
 !samples/**/.openai_cache/
+!samples/**/.local_cache/
 !samples/**/moments.json
 !samples/**/ride_labels.json
 

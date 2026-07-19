@@ -1,0 +1,389 @@
+{
+  "date_folder": "samples/2026-07-10",
+  "summary": {
+    "provider": "local",
+    "model": "mlx-community/Qwen3-VL-8B-Instruct-3bit",
+    "n_labels": 9,
+    "n_model_hits": 28,
+    "n_matched": 9,
+    "n_label_only": 0,
+    "n_model_only": 19,
+    "precision": 0.321,
+    "recall": 1.0
+  },
+  "patterns": {
+    "model_overflag_by_clip_type": {
+      "scenery": 2,
+      "transition": 10,
+      "climb": 7
+    },
+    "score_agreement": {
+      "n": 9,
+      "visual_mean_diff": -0.89,
+      "action_mean_diff": -1.11
+    },
+    "type_agreement": {
+      "matching": 2,
+      "total": 9,
+      "rate": 0.22
+    },
+    "avg_matched_scores": {
+      "visual": 6.4,
+      "action": 4.9
+    },
+    "avg_model_only_scores": {
+      "visual": 5.7,
+      "action": 4.4
+    },
+    "min_matched_max_score": 4
+  },
+  "matched": [
+    {
+      "ride_time_secs": 351,
+      "ride_time_str": "5:51",
+      "source": "both",
+      "clip_name": "GX010333.MP4",
+      "video_secs": 29.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 5,
+      "label_notes": "pretty flowers",
+      "model_visual": 6,
+      "model_action": 6,
+      "model_clip_type": "urban",
+      "model_reason": "Cruising under city overpass at golden hour, rider visible"
+    },
+    {
+      "ride_time_secs": 1521,
+      "ride_time_str": "25:21",
+      "source": "both",
+      "clip_name": "GX010336.MP4",
+      "video_secs": 23.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 5,
+      "label_notes": "pretty view",
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Cruising toward bridge at golden hour, motion blur on road"
+    },
+    {
+      "ride_time_secs": 2591,
+      "ride_time_str": "43:11",
+      "source": "both",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 60.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 5,
+      "label_notes": "George Washington bridge",
+      "model_visual": 7,
+      "model_action": 6,
+      "model_clip_type": "scenery",
+      "model_reason": "Emerging from trees into skyline reveal, mid-clip"
+    },
+    {
+      "ride_time_secs": 2913,
+      "ride_time_str": "48:33",
+      "source": "both",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 24.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 8,
+      "label_notes": "hudson with speed",
+      "model_visual": 8,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Sunlit trail with lake view, rider cruising at 31mph"
+    },
+    {
+      "ride_time_secs": 4921,
+      "ride_time_str": "1:22:01",
+      "source": "both",
+      "clip_name": "GX010341.MP4",
+      "video_secs": 5.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 5,
+      "label_notes": "9W sign",
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Cruising through shaded forest road, clear path ahead"
+    },
+    {
+      "ride_time_secs": 6347,
+      "ride_time_str": "1:45:47",
+      "source": "both",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 2.0,
+      "label_type": "action",
+      "label_visual": 7,
+      "label_action": 8,
+      "label_notes": "Deer!",
+      "model_visual": 4,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Deer pauses on trail, rider cruising through forest"
+    },
+    {
+      "ride_time_secs": 6398,
+      "ride_time_str": "1:46:38",
+      "source": "both",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 53.0,
+      "label_type": "climb",
+      "label_visual": 8,
+      "label_action": 8,
+      "label_notes": "climb",
+      "model_visual": 5,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Climbing uphill through wooded trail, rider visible at peak"
+    },
+    {
+      "ride_time_secs": 9202,
+      "ride_time_str": "2:33:22",
+      "source": "both",
+      "clip_name": "GX010346.MP4",
+      "video_secs": 1.0,
+      "label_type": "urban",
+      "label_visual": 8,
+      "label_action": 5,
+      "label_notes": "bridge",
+      "model_visual": 8,
+      "model_action": 6,
+      "model_clip_type": "landmark",
+      "model_reason": "Emerging from underbridge into skyline reveal"
+    },
+    {
+      "ride_time_secs": 11253,
+      "ride_time_str": "3:07:33",
+      "source": "both",
+      "clip_name": "GX010350.MP4",
+      "video_secs": 2.0,
+      "label_type": "urban",
+      "label_visual": 8,
+      "label_action": 5,
+      "label_notes": "hudson yards",
+      "model_visual": 8,
+      "model_action": 6,
+      "model_clip_type": "scenery",
+      "model_reason": "Golden-hour skyline reveal under clear sky, urban grandeur"
+    }
+  ],
+  "label_only": [],
+  "model_only": [
+    {
+      "ride_time_secs": 327.5,
+      "ride_time_str": "5:27",
+      "source": "local",
+      "clip_name": "GX010333.MP4",
+      "video_secs": 5.5,
+      "model_visual": 7,
+      "model_action": 6,
+      "model_clip_type": "scenery",
+      "model_reason": "Early evening ride through urban park with emerging skyline"
+    },
+    {
+      "ride_time_secs": 372.0,
+      "ride_time_str": "6:12",
+      "source": "local",
+      "clip_name": "GX010333.MP4",
+      "video_secs": 50.0,
+      "model_visual": 4,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Underpass transition with construction barriers visible"
+    },
+    {
+      "ride_time_secs": 1503.0,
+      "ride_time_str": "25:03",
+      "source": "local",
+      "clip_name": "GX010336.MP4",
+      "video_secs": 5.0,
+      "model_visual": 4,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Early morning transit through urban park path"
+    },
+    {
+      "ride_time_secs": 1548.0,
+      "ride_time_str": "25:48",
+      "source": "local",
+      "clip_name": "GX010336.MP4",
+      "video_secs": 50.0,
+      "model_visual": 4,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Steady pace under early evening sky, rider centered on road"
+    },
+    {
+      "ride_time_secs": 2536.0,
+      "ride_time_str": "42:16",
+      "source": "local",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 5.0,
+      "model_visual": 5,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Rising gradient with early morning sun, rider climbing steadily"
+    },
+    {
+      "ride_time_secs": 2626.0,
+      "ride_time_str": "43:46",
+      "source": "local",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 95.0,
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Early-morning climb through wooded path, rider cruising"
+    },
+    {
+      "ride_time_secs": 2671.5,
+      "ride_time_str": "44:31",
+      "source": "local",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 140.5,
+      "model_visual": 7,
+      "model_action": 5,
+      "model_clip_type": "climb",
+      "model_reason": "Cruising up a gentle climb, trees and rock walls frame the road"
+    },
+    {
+      "ride_time_secs": 2716.0,
+      "ride_time_str": "45:16",
+      "source": "local",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 185.0,
+      "model_visual": 8,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Cruising uphill through lush forest, rider centered, clear path ahead"
+    },
+    {
+      "ride_time_secs": 2894.0,
+      "ride_time_str": "48:14",
+      "source": "local",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 5.0,
+      "model_visual": 8,
+      "model_action": 6,
+      "model_clip_type": "climb",
+      "model_reason": "Rising sun through trees on a gentle climb"
+    },
+    {
+      "ride_time_secs": 2939.5,
+      "ride_time_str": "48:59",
+      "source": "local",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 50.5,
+      "model_visual": 7,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Climbing uphill through green forest, rider visible"
+    },
+    {
+      "ride_time_secs": 2984.0,
+      "ride_time_str": "49:44",
+      "source": "local",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 95.0,
+      "model_visual": 5,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Cruising under shaded canopy, no landmark or drama"
+    },
+    {
+      "ride_time_secs": 3029.0,
+      "ride_time_str": "50:29",
+      "source": "local",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 140.0,
+      "model_visual": 5,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Cruising uphill, rider barely visible behind foliage"
+    },
+    {
+      "ride_time_secs": 3074.0,
+      "ride_time_str": "51:14",
+      "source": "local",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 185.0,
+      "model_visual": 6,
+      "model_action": 5,
+      "model_clip_type": "climb",
+      "model_reason": "Climbing a tree-lined hillside road, rider at 246W"
+    },
+    {
+      "ride_time_secs": 3119.0,
+      "ride_time_str": "51:59",
+      "source": "local",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 230.0,
+      "model_visual": 5,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Cruising through shaded forest with dappled light"
+    },
+    {
+      "ride_time_secs": 3140.0,
+      "ride_time_str": "52:20",
+      "source": "local",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 251.0,
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Cruising through shaded forest with dappled light, rider centered"
+    },
+    {
+      "ride_time_secs": 6443.9,
+      "ride_time_str": "1:47:23",
+      "source": "local",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 98.9,
+      "model_visual": 4,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Cruising up a forested climb, rider visible only at frame 3"
+    },
+    {
+      "ride_time_secs": 6485.0,
+      "ride_time_str": "1:48:05",
+      "source": "local",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 140.0,
+      "model_visual": 5,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Calm suburban ride, rider cruising through shaded trees"
+    },
+    {
+      "ride_time_secs": 6530.0,
+      "ride_time_str": "1:48:50",
+      "source": "local",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 185.0,
+      "model_visual": 4,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Cruising through quiet residential streets, uneventful but steady motion."
+    },
+    {
+      "ride_time_secs": 11301.5,
+      "ride_time_str": "3:08:21",
+      "source": "local",
+      "clip_name": "GX010350.MP4",
+      "video_secs": 50.5,
+      "model_visual": 8,
+      "model_action": 6,
+      "model_clip_type": "scenery",
+      "model_reason": "Golden-hour skyline reveal with urban motion blur"
+    }
+  ]
+}

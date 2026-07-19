@@ -20,7 +20,7 @@ M_TO_FT = 3.28084
 def keep_system_awake(reason: str = "long-running pipeline"):
     """Prevent macOS from sleeping or throttling for the duration of a block.
 
-    The 4K libx264 burns and Gemini scans take 10-30 minutes. If the
+    The 4K libx264 burns and vision-model scans take 10-30 minutes. If the
     display sleeps mid-run, macOS aggressively throttles the Python
     process via App Nap and Power Nap — clips that normally take 45s
     can run for 90+ minutes overnight.

@@ -1,0 +1,97 @@
+[
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 5.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 6,
+      "scenery": 5,
+      "subject": 3
+    },
+    "raw_sum": 28,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "Descending shaded tree-lined road with nice light but no clear riders",
+    "ride_time_secs": 2894.0
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 19.0,
+    "video_end": 29.0,
+    "anchor_video_secs": 22.5,
+    "peak_offset": 0.35,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 7,
+      "scenery": 7,
+      "subject": 2
+    },
+    "raw_sum": 30,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "Sunny fast descent past river with open roadway and greenery",
+    "ride_time_secs": 2911.5
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 35.0,
+    "video_end": 195.0,
+    "anchor_video_secs": 147.0,
+    "peak_offset": 0.7,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 6,
+      "scenery": 7,
+      "subject": 5
+    },
+    "raw_sum": 31,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Sunlight dappled climb on stone path, steady moderate effort",
+    "ride_time_secs": 3036.0
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 225.0,
+    "video_end": 235.0,
+    "anchor_video_secs": 232.0,
+    "peak_offset": 0.7,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 7,
+      "scenery": 6,
+      "subject": 4
+    },
+    "raw_sum": 30,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "Speedy descent through dappled woodland light, nice motion and setting",
+    "ride_time_secs": 3121.0
+  },
+  {
+    "clip_name": "GX010339.MP4",
+    "video_start": 245.0,
+    "video_end": 255.0,
+    "anchor_video_secs": 248.0,
+    "peak_offset": 0.3,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 7,
+      "scenery": 7,
+      "subject": 2
+    },
+    "raw_sum": 29,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "Fast descent with sun filtering through trees, no clear subject",
+    "ride_time_secs": 3137.0
+  }
+]

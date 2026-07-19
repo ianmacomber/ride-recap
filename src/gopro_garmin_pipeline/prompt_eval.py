@@ -60,12 +60,9 @@ def _active_provider(settings) -> str:
 
 
 def _active_model_id(settings) -> str:
-    provider = _active_provider(settings)
-    if provider == "openai":
-        return settings.openai_model
-    if provider == "local":
-        return settings.local_model
-    return settings.gemini_model
+    from .models import provider_model_id
+
+    return provider_model_id(settings)
 
 
 def _sanitize_model_id(model_id: str) -> str:
@@ -375,14 +372,18 @@ def _cache_files_for_active_model(cache_dir: Path, provider: str, model_id: str)
     return matched
 
 
-def _load_model_hits(date_folder: Path) -> list[dict]:
+def _load_model_hits(
+    date_folder: Path,
+    chapter_names: set[str] | None = None,
+) -> list[dict]:
     """Load vision-scan hits from the active provider's cache directory.
 
     Uses ``MODEL_PROVIDER`` to pick ``.{provider}_cache/``. Does **not**
     fall back across providers (one-provider rule). Gemini still accepts
     legacy ``gemini_cache.json``. OpenAI files are filtered to the active
-    ``OPENAI_MODEL`` fingerprint. When local ``*.MP4``/``*.mp4`` files
-    exist, hits for other chapters are dropped.
+    ``OPENAI_MODEL`` fingerprint. Hits are restricted to *chapter_names*
+    when supplied; otherwise local ``*.MP4``/``*.mp4`` files define the
+    restriction when present.
     """
     from .config import get_settings
     from .models import cache_dir_name
@@ -398,9 +399,12 @@ def _load_model_hits(date_folder: Path) -> list[dict]:
             if legacy.exists():
                 hits = json.loads(legacy.read_text())
                 if isinstance(hits, list):
-                    return _filter_hits_to_local_chapters(
-                        hits, _local_chapter_names(date_folder),
+                    names = (
+                        chapter_names
+                        if chapter_names is not None
+                        else _local_chapter_names(date_folder)
                     )
+                    return _filter_hits_to_local_chapters(hits, names)
         return []
 
     all_hits = []
@@ -411,7 +415,12 @@ def _load_model_hits(date_folder: Path) -> list[dict]:
                 all_hits.extend(hits)
         except (json.JSONDecodeError, OSError):
             continue
-    return _filter_hits_to_local_chapters(all_hits, _local_chapter_names(date_folder))
+    names = (
+        chapter_names
+        if chapter_names is not None
+        else _local_chapter_names(date_folder)
+    )
+    return _filter_hits_to_local_chapters(all_hits, names)
 
 
 # Thin alias for callers/tests that still use the old name
@@ -595,9 +604,18 @@ def compare_ride(date_folder: Path) -> CompareReport:
     provider = _active_provider(settings)
     model_id = _active_model_id(settings)
 
+    all_labels = _load_labels(date_folder)
     local_names = _local_chapter_names(date_folder)
-    labels = _filter_labels_to_local_chapters(_load_labels(date_folder), local_names)
-    model_hits = _load_model_hits(date_folder)
+    # The committed sample contains no MP4s. In that case its labeled chapter
+    # names define the comparison tier, preventing the 19-chapter Gemini
+    # baseline from being compared against eight chapters of alternatives.
+    comparison_names = local_names or {
+        str(label.get("clip_name", ""))
+        for label in all_labels
+        if label.get("clip_name")
+    }
+    labels = _filter_labels_to_local_chapters(all_labels, comparison_names)
+    model_hits = _load_model_hits(date_folder, comparison_names)
 
     if not labels:
         print(f"No labels found in {date_folder}")

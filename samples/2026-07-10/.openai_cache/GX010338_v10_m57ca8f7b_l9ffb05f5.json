@@ -1,0 +1,78 @@
+[
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 0,
+    "video_end": 105.0,
+    "anchor_video_secs": 73.5,
+    "peak_offset": 0.7,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 6,
+      "subject": 3
+    },
+    "raw_sum": 27,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "Descent with greenery and bridge glimpse, moderate speed, low power",
+    "ride_time_secs": 2604.5
+  },
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 115.0,
+    "video_end": 145.0,
+    "anchor_video_secs": 139.0,
+    "peak_offset": 0.8,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 3
+    },
+    "raw_sum": 29,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Climbing a leafy road with dappled sunlight, moderate motion",
+    "ride_time_secs": 2670.0
+  },
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 155.0,
+    "video_end": 175.0,
+    "anchor_video_secs": 162.0,
+    "peak_offset": 0.35,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 2
+    },
+    "raw_sum": 27,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Golden hour light on leafy climb, moderate motion, no clear subject",
+    "ride_time_secs": 2693.0
+  },
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 180.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 185.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 4,
+      "scenery": 6,
+      "subject": 3
+    },
+    "raw_sum": 26,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "Nice light and greenery, gentle downhill cruise, no clear subject",
+    "ride_time_secs": 2716.0
+  }
+]

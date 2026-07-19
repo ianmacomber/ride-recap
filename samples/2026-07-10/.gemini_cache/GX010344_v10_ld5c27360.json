@@ -15,7 +15,8 @@
     "raw_sum": 28,
     "clip_type": "incident",
     "crop_x": 50,
-    "reason": "Steep climb with a close encounter passing a deer roadside."
+    "reason": "Steep climb with a close encounter passing a deer roadside.",
+    "ride_time_secs": 6347.8
   },
   {
     "clip_name": "GX010344.MP4",
@@ -33,7 +34,8 @@
     "raw_sum": 21,
     "clip_type": "climb",
     "crop_x": 50,
-    "reason": "Anaerobic climb up steep, cracked road with sun filtering through trees"
+    "reason": "Anaerobic climb up steep, cracked road with sun filtering through trees",
+    "ride_time_secs": 6361.0
   },
   {
     "clip_name": "GX010344.MP4",
@@ -51,7 +53,8 @@
     "raw_sum": 23,
     "clip_type": "climb",
     "crop_x": 50,
-    "reason": "Steep climb up River Road past Palisades rock faces at threshold effort."
+    "reason": "Steep climb up River Road past Palisades rock faces at threshold effort.",
+    "ride_time_secs": 6410.0
   },
   {
     "clip_name": "GX010344.MP4",
@@ -69,7 +72,8 @@
     "raw_sum": 23,
     "clip_type": "climb",
     "crop_x": 50,
-    "reason": "High-power anaerobic climb up a rugged, tree-lined historic road."
+    "reason": "High-power anaerobic climb up a rugged, tree-lined historic road.",
+    "ride_time_secs": 6425.0
   },
   {
     "clip_name": "GX010344.MP4",
@@ -87,7 +91,8 @@
     "raw_sum": 22,
     "clip_type": "climb",
     "crop_x": 50,
-    "reason": "Steep anaerobic climb up a quiet, tree-framed road with stone walls."
+    "reason": "Steep anaerobic climb up a quiet, tree-framed road with stone walls.",
+    "ride_time_secs": 6450.3
   },
   {
     "clip_name": "GX010344.MP4",
@@ -105,7 +110,8 @@
     "raw_sum": 19,
     "clip_type": "climb",
     "crop_x": 50,
-    "reason": "Solo climb up a quiet, tree-shaded hill at high power."
+    "reason": "Solo climb up a quiet, tree-shaded hill at high power.",
+    "ride_time_secs": 6470.0
   },
   {
     "clip_name": "GX010344.MP4",
@@ -123,6 +129,7 @@
     "raw_sum": 18,
     "clip_type": "transition",
     "crop_x": 50,
-    "reason": "Unremarkable transit footage on a generic park access road."
+    "reason": "Unremarkable transit footage on a generic park access road.",
+    "ride_time_secs": 6521.5
   }
 ]

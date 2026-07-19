@@ -15,7 +15,8 @@
     "raw_sum": 32,
     "clip_type": "landmark",
     "crop_x": 50,
-    "reason": "George Washington Bridge comes into view under soft morning light."
+    "reason": "George Washington Bridge comes into view under soft morning light.",
+    "ride_time_secs": 1513.8
   },
   {
     "clip_name": "GX010336.MP4",
@@ -33,6 +34,7 @@
     "raw_sum": 32,
     "clip_type": "urban",
     "crop_x": 50,
-    "reason": "Passing close to MTA city buses on an urban bridge approach."
+    "reason": "Passing close to MTA city buses on an urban bridge approach.",
+    "ride_time_secs": 1552.0
   }
 ]

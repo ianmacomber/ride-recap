@@ -1,0 +1,40 @@
+[
+  {
+    "clip_name": "GX010341.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 5.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 4,
+      "scenery": 7,
+      "subject": 2
+    },
+    "raw_sum": 26,
+    "clip_type": "scenery",
+    "crop_x": 50,
+    "reason": "Pleasant quiet road with dappled light but minimal action",
+    "ride_time_secs": 4921.0
+  },
+  {
+    "clip_name": "GX010341.MP4",
+    "video_start": 15.0,
+    "video_end": 25.0,
+    "anchor_video_secs": 20.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 7,
+      "composition": 5,
+      "motion": 5,
+      "scenery": 5,
+      "subject": 3
+    },
+    "raw_sum": 25,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Calm ride on tree-lined street, steady pace with good light",
+    "ride_time_secs": 4936.0
+  }
+]

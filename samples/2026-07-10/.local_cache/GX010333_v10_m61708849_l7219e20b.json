@@ -1,0 +1,59 @@
+[
+  {
+    "clip_name": "GX010333.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 5.5,
+    "peak_offset": 0.55,
+    "rubric": {
+      "light": 6,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 6
+    },
+    "raw_sum": 31,
+    "clip_type": "scenery",
+    "crop_x": 50,
+    "reason": "Early evening ride through urban park with emerging skyline",
+    "ride_time_secs": 327.5
+  },
+  {
+    "clip_name": "GX010333.MP4",
+    "video_start": 24.0,
+    "video_end": 34.0,
+    "anchor_video_secs": 29.5,
+    "peak_offset": 0.55,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 6
+    },
+    "raw_sum": 31,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Cruising under city overpass at golden hour, rider visible",
+    "ride_time_secs": 351.5
+  },
+  {
+    "clip_name": "GX010333.MP4",
+    "video_start": 45.0,
+    "video_end": 55.0,
+    "anchor_video_secs": 50.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 5,
+      "motion": 5,
+      "scenery": 3,
+      "subject": 4
+    },
+    "raw_sum": 21,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Underpass transition with construction barriers visible",
+    "ride_time_secs": 372.0
+  }
+]

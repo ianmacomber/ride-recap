@@ -15,7 +15,8 @@
     "raw_sum": 29,
     "clip_type": "descent",
     "crop_x": 50,
-    "reason": "Sun-drenched solo descent down the tree-lined Palisades cliffside road."
+    "reason": "Sun-drenched solo descent down the tree-lined Palisades cliffside road.",
+    "ride_time_secs": 2537.0
   },
   {
     "clip_name": "GX010338.MP4",
@@ -33,7 +34,8 @@
     "raw_sum": 36,
     "clip_type": "landmark",
     "crop_x": 50,
-    "reason": "Iconic George Washington Bridge reveal climbing up tree-lined River Road."
+    "reason": "Iconic George Washington Bridge reveal climbing up tree-lined River Road.",
+    "ride_time_secs": 2574.0
   },
   {
     "clip_name": "GX010338.MP4",
@@ -51,7 +53,8 @@
     "raw_sum": 37,
     "clip_type": "landmark",
     "crop_x": 50,
-    "reason": "Cruising under the massive George Washington Bridge with golden hour flare."
+    "reason": "Cruising under the massive George Washington Bridge with golden hour flare.",
+    "ride_time_secs": 2614.5
   },
   {
     "clip_name": "GX010338.MP4",
@@ -69,7 +72,8 @@
     "raw_sum": 27,
     "clip_type": "scenery",
     "crop_x": 50,
-    "reason": "Scenic morning cruise along the tree-lined Palisades cliffs with beautiful dappled light."
+    "reason": "Scenic morning cruise along the tree-lined Palisades cliffs with beautiful dappled light.",
+    "ride_time_secs": 2641.0
   },
   {
     "clip_name": "GX010338.MP4",
@@ -87,7 +91,8 @@
     "raw_sum": 30,
     "clip_type": "scenery",
     "crop_x": 50,
-    "reason": "Scenic morning climb past the dramatic Palisades cliffs on River Road."
+    "reason": "Scenic morning climb past the dramatic Palisades cliffs on River Road.",
+    "ride_time_secs": 2674.0
   },
   {
     "clip_name": "GX010338.MP4",
@@ -105,6 +110,7 @@
     "raw_sum": 22,
     "clip_type": "transition",
     "crop_x": 50,
-    "reason": "Cruising through dappled morning light on a quiet, wooded park road."
+    "reason": "Cruising through dappled morning light on a quiet, wooded park road.",
+    "ride_time_secs": 2719.0
   }
 ]

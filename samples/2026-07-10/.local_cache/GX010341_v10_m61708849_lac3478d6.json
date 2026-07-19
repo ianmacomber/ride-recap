@@ -6,16 +6,16 @@
     "anchor_video_secs": 5.0,
     "peak_offset": 0.5,
     "rubric": {
-      "light": 4,
-      "composition": 3,
-      "motion": 3,
+      "light": 7,
+      "composition": 7,
+      "motion": 5,
       "scenery": 4,
-      "subject": 2
+      "subject": 4
     },
-    "raw_sum": 16,
+    "raw_sum": 27,
     "clip_type": "transition",
     "crop_x": 50,
-    "reason": "Unremarkable transit footage on a flat, empty road bordered by trees.",
+    "reason": "Cruising through shaded forest road, clear path ahead",
     "ride_time_secs": 4921.0
   }
 ]

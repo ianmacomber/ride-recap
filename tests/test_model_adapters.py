@@ -18,6 +18,7 @@ from gopro_garmin_pipeline.models import (
     cache_dir_name,
     get_model_adapter,
     provider_api_key,
+    provider_model_id,
 )
 from gopro_garmin_pipeline.models.base import ClipRubric, CoarseFrameBatch, FrameScore
 from gopro_garmin_pipeline.models.local_vlm import (
@@ -117,6 +118,29 @@ def test_cache_dir_name():
     assert cache_dir_name("gemini") == ".gemini_cache"
     assert cache_dir_name("openai") == ".openai_cache"
     assert cache_dir_name("local") == ".local_cache"
+
+
+def test_provider_model_id_selects_local_model():
+    settings = Settings(
+        _env_file=None,
+        model_provider="local",
+        gemini_model="gemini-3.5-flash",
+        local_model="mlx-community/Qwen3-VL-8B-Instruct-3bit",
+    )
+    assert provider_model_id(settings) == "mlx-community/Qwen3-VL-8B-Instruct-3bit"
+
+
+def test_cli_exposes_skip_vision_with_legacy_alias():
+    from click.testing import CliRunner
+
+    from gopro_garmin_pipeline.cli import main
+
+    runner = CliRunner()
+    for command in ("compose", "process", "compare-features"):
+        result = runner.invoke(main, [command, "--help"])
+        assert result.exit_code == 0
+        assert "--skip-vision, --skip-gemini" in result.output
+        assert "configured vision-model scan" in result.output
 
 
 # ─── Cache keys ───────────────────────────────────────────────
@@ -804,6 +828,50 @@ def test_load_hits_keeps_all_when_no_local_mp4(tmp_path, monkeypatch):
             "GX010001.MP4",
             "GX010002.MP4",
         }
+    finally:
+        cfg.get_settings.cache_clear()
+
+
+def test_compare_without_mp4_uses_labeled_chapter_tier(tmp_path, monkeypatch):
+    from gopro_garmin_pipeline import config as cfg
+    from gopro_garmin_pipeline.prompt_eval import compare_ride
+
+    cache = tmp_path / ".gemini_cache"
+    cache.mkdir()
+    (cache / "GX01_v10.json").write_text(json.dumps([
+        {
+            "clip_name": "GX010001.MP4",
+            "ride_time_secs": 10,
+            "rubric": {
+                "light": 5, "composition": 7, "motion": 4,
+                "scenery": 7, "subject": 4,
+            },
+        },
+        {
+            "clip_name": "GX010099.MP4",
+            "ride_time_secs": 20,
+            "rubric": {
+                "light": 5, "composition": 6, "motion": 4,
+                "scenery": 6, "subject": 4,
+            },
+        },
+    ]))
+    (tmp_path / "ride_labels.json").write_text(json.dumps([{
+        "clip_name": "GX010001.MP4",
+        "ride_time_secs": 10,
+        "visual": 7,
+        "action": 4,
+        "scale_version": 2,
+    }]))
+
+    monkeypatch.setenv("MODEL_PROVIDER", "gemini")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.5-flash")
+    cfg.get_settings.cache_clear()
+    try:
+        report = compare_ride(tmp_path)
+        assert report.n_labels == 1
+        assert report.n_model_hits == 1
+        assert len(report.matched) == 1
     finally:
         cfg.get_settings.cache_clear()
 

@@ -15,6 +15,7 @@ __all__ = [
     "LocalOpenAIAdapter",
     "get_model_adapter",
     "provider_api_key",
+    "provider_model_id",
     "cache_dir_name",
 ]
 
@@ -36,6 +37,20 @@ def provider_api_key(settings) -> str:
             return settings.local_api_key or "local"
         return ""
     return ""
+
+
+def provider_model_id(settings) -> str:
+    """Return the configured model id for the active provider."""
+    provider = (settings.model_provider or "gemini").lower()
+    if provider == "gemini":
+        return settings.gemini_model
+    if provider == "openai":
+        return settings.openai_model
+    if provider == "local":
+        return settings.local_model
+    raise ValueError(
+        f"Unknown MODEL_PROVIDER={provider!r}; expected 'gemini', 'openai', or 'local'"
+    )
 
 
 def cache_dir_name(provider: str) -> str:

@@ -15,7 +15,8 @@
     "raw_sum": 29,
     "clip_type": "urban",
     "crop_x": 50,
-    "reason": "Cruising past towering Hudson Yards skyscrapers under bright New York skies."
+    "reason": "Cruising past towering Hudson Yards skyscrapers under bright New York skies.",
+    "ride_time_secs": 11253.5
   },
   {
     "clip_name": "GX010350.MP4",
@@ -33,6 +34,7 @@
     "raw_sum": 25,
     "clip_type": "urban",
     "crop_x": 50,
-    "reason": "Cruising past modern skyscrapers of Hudson Yards and the High Line."
+    "reason": "Cruising past modern skyscrapers of Hudson Yards and the High Line.",
+    "ride_time_secs": 11308.0
   }
 ]

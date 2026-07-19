@@ -15,10 +15,11 @@ smell test rather than a benchmark.
 
 ## Method
 
-Each provider ran the same two-pass scan and versioned prompts. Provider/model
-fingerprints isolate their caches. Comparisons were restricted to MP4 chapters
-present locally, so Gemini's cached ratings for the other eleven chapters did
-not inflate its model-only count.
+Each provider ran the same two-pass scan and versioned prompts. Provider cache
+directories are isolated, and non-Gemini cache filenames include a model
+fingerprint. Comparisons were restricted to the eight labeled chapters, so
+Gemini's cached ratings for the other eleven chapters did not inflate its
+model-only count. Gemini retains legacy cache filenames for compatibility.
 
 The comparison folds the five-dimension rubric onto the two hand-label axes:
 
@@ -73,16 +74,19 @@ recall should not be read as 100% semantic recognition or discovery recall.
 
 ## Reproduction
 
-Select one provider at a time in `.env`, run the scan over the eight downloaded
-chapters, then compare without a manual offset:
+The exact caches and reports behind the table are committed under
+`samples/2026-07-10/`. Reproduce each report without video, credentials, or a
+running local model:
 
 ```bash
-MODEL_PROVIDER=gemini ride-recap compare data/raw/2026-07-10
-MODEL_PROVIDER=openai ride-recap compare data/raw/2026-07-10
-MODEL_PROVIDER=local ride-recap compare data/raw/2026-07-10
+MODEL_PROVIDER=gemini ride-recap compare samples/2026-07-10
+MODEL_PROVIDER=openai OPENAI_MODEL=gpt-4.1-mini \
+  ride-recap compare samples/2026-07-10
+MODEL_PROVIDER=local LOCAL_MODEL=mlx-community/Qwen3-VL-8B-Instruct-3bit \
+  ride-recap compare samples/2026-07-10
 ```
 
-Reports use provider/model-specific filenames, and comparison only loads cache
-entries for MP4 chapters present in the ride directory. Raw footage, provider
-caches, `.env`, and generated reports under `data/raw/` are intentionally not
-committed.
+Reports use provider/model-specific filenames. With downloaded footage,
+comparison uses the MP4 chapters present in the ride directory; in the
+video-free committed sample, the labeled chapter names define the same tier.
+Raw footage, `.env`, and working outputs under `data/raw/` remain ignored.

@@ -1,0 +1,21 @@
+[
+  {
+    "clip_name": "GX010346.MP4",
+    "video_start": 0,
+    "video_end": 6.0,
+    "anchor_video_secs": 4.5,
+    "peak_offset": 0.75,
+    "rubric": {
+      "light": 7,
+      "composition": 8,
+      "motion": 5,
+      "scenery": 9,
+      "subject": 7
+    },
+    "raw_sum": 36,
+    "clip_type": "landmark",
+    "crop_x": 50,
+    "reason": "Emerging from underbridge into skyline reveal",
+    "ride_time_secs": 9205.5
+  }
+]

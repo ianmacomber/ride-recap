@@ -5,7 +5,7 @@ Multi-source candidate generation pipeline:
      climbs, sprints detected from Garmin data alone (highlights.py).
   2. Strava segments — popular segments on the route, scored via
      log(star_count) + telemetry at midpoint.
-  3. Gemini vision — sparse frame scan of entire ride for visual interest.
+  3. Vision model — sparse frame scan of entire ride for visual interest.
   4. Manual labels — optional enrichment from ride_labels.json.
 
 All sources are fused, deduplicated (nearby candidates merged), capped
@@ -179,7 +179,7 @@ class ComposerConfig:
     # a halt — are dead footage. Set to 0 to disable the motion-gate.
     min_motion_mph: float = 5.0
     skip_gemini: bool = False
-    skip_narrative: bool = False  # disable Gemini narrative selection (use greedy)
+    skip_narrative: bool = False  # disable model narrative selection (use greedy)
     include_outro: bool = True  # crossfade last segment into recap card
     outro_crossfade_secs: float = 3.0
     outro_lead_in_secs: float = 2.0  # extra normal-playback seconds before crossfade
@@ -300,7 +300,7 @@ def _apply_liveness_penalty(candidates: list[Segment], ride: RideData) -> None:
 
     Skips label-sourced and must-include candidates — the rider's own
     picks are editorial ground truth. Applied to the fused pool BEFORE
-    selection, so the lower scores flow through both the Gemini narrative
+    selection, so the lower scores flow through both the model narrative
     pass (which sees seg.score) and the diversity-aware greedy loop.
     """
     damped = 0
@@ -888,7 +888,7 @@ def _generate_candidates(
     Sources (all optional except ride):
       1. FIT telemetry highlights (always available)
       2. Strava segment efforts (if activity ID provided)
-      3. Gemini vision candidates (if not skipped)
+      3. Vision-model candidates (if not skipped)
       4. Manual labels (if provided)
     """
     all_candidates: list[Segment] = []
@@ -918,7 +918,7 @@ def _generate_candidates(
         print(f"  Strava segments: {len(strava)} candidates")
         all_candidates.extend(strava)
 
-    # 3. Gemini vision
+    # 3. Vision model
     if gemini_candidates:
         src = gemini_candidates[0].source or "vision"
         print(f"  Vision ({src}): {len(gemini_candidates)} candidates")
@@ -1278,7 +1278,7 @@ def _narrative_select(
         seen: set = set()
         _absorb(_call(prompt), selected, seen)
 
-        # Re-ask once if Gemini under-delivered on the count. Models anchor
+        # Re-ask once if the model under-delivered on the count. Models anchor
         # on a short answer and quietly ignore "exactly N" (it returned ~n/2
         # before this). A targeted follow-up naming what's already chosen
         # reliably closes the gap and costs a fraction of a cent.
@@ -1301,7 +1301,8 @@ def _narrative_select(
             return None
 
         selected.sort(key=lambda s: s.ride_time_secs)  # chronological
-        print(f"  Gemini narrative selection: {len(selected)} clips "
+        provider = (settings.model_provider or "gemini").lower()
+        print(f"  Narrative selection ({provider}): {len(selected)} clips "
               f"(target {n_clips})")
         return selected
 
@@ -1323,8 +1324,8 @@ def select_segments(
 ) -> list[Segment]:
     """Two-stage selection: generate candidates, then rank and select for budget.
 
-    First tries Gemini narrative selection (asks Gemini to pick clips that
-    tell a compelling ride story). Falls back to greedy gap-filling on failure.
+    First asks the configured model to pick clips that tell a compelling ride
+    story. Falls back to greedy gap-filling on failure.
 
     If precomputed_candidates is provided, skips candidate generation and
     uses those directly. Otherwise generates from all available sources.
@@ -1352,14 +1353,14 @@ def select_segments(
     # the burn duration, not s.duration.
     n = max(1, int(budget_secs / config.segment_duration))
 
-    # Try Gemini narrative selection first — apply proximity-aware filter
-    # and backfill with greedy if Gemini returned too few or clustered clips.
+    # Try model narrative selection first — apply proximity-aware filter and
+    # backfill with greedy if the model returned too few or clustered clips.
     if not config.skip_narrative:
         narrative = _narrative_select(candidates, n, budget_secs, layout)
         if narrative is not None:
             # Diversity-aware filter. We rank narrative picks by their
             # boosted score (descending) so the strongest claims its spot
-            # first — order-independent of Gemini's story-order response.
+            # first — order-independent of the model's story-order response.
             # A pick survives unless the crowding penalty drives its
             # effective score below zero, i.e., it's clearly net-negative
             # against what's already in. No absolute threshold — that
@@ -1783,7 +1784,7 @@ def generate_all_candidates(
         except Exception as exc:
             print(f"  Warning: couldn't fetch Strava data: {exc}")
 
-    # Optional: Gemini sparse scan
+    # Optional: configured vision-model sparse scan
     gemini_candidates = None
     if not config.skip_gemini:
         try:
@@ -1792,7 +1793,7 @@ def generate_all_candidates(
                 video_dir, synced_clips, ride, config, labels=labels,
             )
         except Exception as exc:
-            print(f"  Warning: Gemini scan failed: {exc}")
+            print(f"  Warning: vision scan failed: {exc}")
 
     # Generate and fuse
     print("\nGenerating candidates...")

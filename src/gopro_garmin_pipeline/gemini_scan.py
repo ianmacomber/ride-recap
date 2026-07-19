@@ -34,7 +34,13 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from .models import ModelAdapter, cache_dir_name, get_model_adapter, provider_api_key
+from .models import (
+    ModelAdapter,
+    cache_dir_name,
+    get_model_adapter,
+    provider_api_key,
+    provider_model_id,
+)
 from .prompt_registry import prompt_body
 from .utils import MS_TO_MPH, compute_gradient, gopro_lrv_proxy
 
@@ -1117,10 +1123,7 @@ def scan_ride(
 
     # Resolve model_id for cache probes without constructing a client when
     # we only need the fingerprint for cache-hit counting below.
-    if provider == "openai":
-        model_id = settings.openai_model
-    else:
-        model_id = settings.gemini_model
+    model_id = provider_model_id(settings)
 
     # Build per-clip forced fine-pass times from labels + telemetry peaks.
     # The coarse pass at 1 frame / 10s misses fast events — a corner taken

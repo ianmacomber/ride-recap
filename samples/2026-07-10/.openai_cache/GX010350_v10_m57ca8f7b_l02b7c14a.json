@@ -1,0 +1,21 @@
+[
+  {
+    "clip_name": "GX010350.MP4",
+    "video_start": 0,
+    "video_end": 55.0,
+    "anchor_video_secs": 16.5,
+    "peak_offset": 0.3,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 4
+    },
+    "raw_sum": 29,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Bright city street with strong architectural lines, moderate motion",
+    "ride_time_secs": 11267.5
+  }
+]

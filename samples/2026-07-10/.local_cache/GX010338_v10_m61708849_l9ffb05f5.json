@@ -1,0 +1,97 @@
+[
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 5.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 4,
+      "subject": 4
+    },
+    "raw_sum": 26,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Rising gradient with early morning sun, rider climbing steadily",
+    "ride_time_secs": 2536.0
+  },
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 45.0,
+    "video_end": 65.0,
+    "anchor_video_secs": 60.0,
+    "peak_offset": 0.75,
+    "rubric": {
+      "light": 6,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 6
+    },
+    "raw_sum": 31,
+    "clip_type": "scenery",
+    "crop_x": 50,
+    "reason": "Emerging from trees into skyline reveal, mid-clip",
+    "ride_time_secs": 2591.0
+  },
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 90.0,
+    "video_end": 100.0,
+    "anchor_video_secs": 95.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 6,
+      "subject": 4
+    },
+    "raw_sum": 29,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Early-morning climb through wooded path, rider cruising",
+    "ride_time_secs": 2626.0
+  },
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 135.0,
+    "video_end": 145.0,
+    "anchor_video_secs": 140.5,
+    "peak_offset": 0.55,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 5
+    },
+    "raw_sum": 31,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Cruising up a gentle climb, trees and rock walls frame the road",
+    "ride_time_secs": 2671.5
+  },
+  {
+    "clip_name": "GX010338.MP4",
+    "video_start": 180.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 185.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 7,
+      "composition": 8,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 4
+    },
+    "raw_sum": 31,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Cruising uphill through lush forest, rider centered, clear path ahead",
+    "ride_time_secs": 2716.0
+  }
+]
