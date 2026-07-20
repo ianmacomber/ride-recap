@@ -34,7 +34,7 @@ We identify compelling moments from four separate sources:
 
 1. Garmin telemetry via `.fit` file (speed, HR, power spikes, sprints, climbs)
 2. Strava via API (popular segments)
-3. Gemini vision scan + rating of individual frames
+3. Configured vision-model scan + rating of individual frames
 4. (optional) hand-labels via Streamlit app
 
 Here's an example of one moment being scored across all sources:
@@ -44,7 +44,7 @@ Here's an example of one moment being scored across all sources:
 The fusion step works like this:
 
 1. “Must include” manual labels are picked first
-2. A Gemini LLM narrative pass picks 20 clips to best tell the story of the ride, boosting “cross-source agreements” (if a human label + telemetry + Strava + Gemini all agree that a clip is interesting)
+2. A model narrative pass picks 20 clips to best tell the story of the ride, boosting “cross-source agreements” (if a human label + telemetry + Strava + vision all agree that a clip is interesting)
 3. Greedy re-ranking with a crowding penalty to avoid clips too close to something already selected
    1. First, a “quality” phase that picks best-first until the best remaining candidate is net-negative with crowding penalty
    2. Second, a “coverage” fill that guarantees the exact clip count by placing the liveliest available clips into the biggest timeline holes.
@@ -55,7 +55,9 @@ Generally, the visual rubric is the score of record, and telemetry is a tiebreak
 
 ## Setup
 
-**You need:** Python 3.11+, [ffmpeg](https://ffmpeg.org/download.html), and a Gemini API key. You also need a road bike mounted with a GoPro and a Garmin.
+**You need:** Python 3.11+, [ffmpeg](https://ffmpeg.org/download.html), and
+one configured vision-model provider. You also need a road bike mounted with a
+GoPro and a Garmin.
 
 ```bash
 git clone https://github.com/ianmacomber/ride-recap.git
@@ -68,7 +70,7 @@ pip install -e ".[dev]"
 cp .env.example .env
 ```
 
-Then open `.env` and set three things:
+Gemini is the default provider. To use it, open `.env` and set:
 
 ```env
 GEMINI_API_KEY=your-key-here    # https://aistudio.google.com/apikey
@@ -77,7 +79,10 @@ FTP=240                          # ← YOUR functional threshold power
 MAX_HEART_RATE=196               # ← YOUR max heart rate
 ```
 
-**Set FTP and MAX_HEART_RATE.** These numbers drive three things: the spike thresholds that decide what counts as a hard effort, the HUD's zone colors, and the power zones written into the Gemini prompt so the model knows whether 216W means "cruising" or "peak effort" for you.
+**Set FTP and MAX_HEART_RATE regardless of provider.** These numbers drive
+three things: the spike thresholds that decide what counts as a hard effort,
+the HUD's zone colors, and the power zones written into the vision prompt so
+the model knows whether 216W means "cruising" or "peak effort" for you.
 
 Verify it runs:
 
@@ -85,6 +90,53 @@ Verify it runs:
 ride-recap --help
 pytest                    # smoke tests, no video or API keys needed
 ```
+
+### Model providers
+
+Gemini remains the default. A complete run uses one provider for the vision
+scan, narrative selection, and prompt evaluation; caches and comparison
+reports are isolated by provider and model.
+
+For OpenAI:
+
+```env
+MODEL_PROVIDER=openai
+OPENAI_API_KEY=your-key-here
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+For a local OpenAI-compatible VLM:
+
+```env
+MODEL_PROVIDER=local
+LOCAL_BASE_URL=http://127.0.0.1:8080/v1
+LOCAL_API_KEY=local
+LOCAL_MODEL=mlx-community/Qwen3-VL-8B-Instruct-3bit
+LOCAL_MAX_CONCURRENCY=1
+LOCAL_TIMEOUT_SECONDS=600
+```
+
+One way to serve that model on Apple Silicon is
+[`mlx-vlm`](https://github.com/Blaizzy/mlx-vlm):
+
+```bash
+python -m pip install -U mlx-vlm
+python -m mlx_vlm.server \
+  --model mlx-community/Qwen3-VL-8B-Instruct-3bit \
+  --host 127.0.0.1 \
+  --port 8080
+```
+
+Keep the server running and confirm it is ready before starting a scan:
+
+```bash
+curl http://127.0.0.1:8080/health
+curl http://127.0.0.1:8080/v1/models
+```
+
+The default local concurrency is deliberately one. The scanner evaluates
+multiple chapters and regions concurrently, while a single Apple Silicon VLM
+usually needs requests serialized to avoid memory pressure.
 
 ---
 
@@ -153,6 +205,9 @@ one issue #2 needs. Swap `clips` for `full` for the whole ride. The
 the download into a `data/raw/2026-07-10/` folder every command above runs
 against verbatim.
 
+See [the issue #2 model comparison](docs/model-comparison.md) for the
+Gemini, GPT-4.1 mini, and local Qwen3-VL results on these same eight chapters.
+
 ---
 
 ## Degrading gracefully
@@ -161,7 +216,7 @@ Only ffmpeg, a FIT file, and at least one `.MP4` are actually required. Everythi
 
 | Missing | What happens |
 |---|---|
-| `GEMINI_API_KEY` | Prints a warning, falls back to telemetry + Strava candidates and greedy selection. Runs, but this is the part that finds the good clips. |
+| Active provider credentials/server | Prints a warning or a clear connection error; without a working vision provider, candidates fall back to telemetry + Strava and greedy selection. |
 | Strava credentials | Only runs if you pass `--strava-activity` anyway. Warns and continues. |
 | Garmin credentials | Only needed for `garmin-download`. `process` never touches them. |
 | `OSM_CONTACT_EMAIL` | No GPS-derived place names; falls back to your `--origin`/`--road` flags or the design tokens. |
@@ -223,6 +278,7 @@ src/gopro_garmin_pipeline/
   fit_parser.py       # .fit → RideData (power, HR, speed, GPS)
   gpmf_sync.py        # GoPro GPS-time → FIT offset. The clock sync that matters.
   gemini_scan.py      # Two-pass vision scan (coarse regions → fine rubric)
+  models/             # Gemini, OpenAI, and local OpenAI-compatible adapters
   composer.py         # Candidate generation, fusion, selection, composition
   burn_overlay.py     # The 5-element HUD, landscape + portrait
   intro_outro.py      # Blur→title opener, outro recap card

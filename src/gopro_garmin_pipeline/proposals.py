@@ -1,7 +1,7 @@
 """Unified moment-proposal model.
 
 A MomentProposal is the single canonical object describing one candidate
-clip in the highlight reel pipeline. Telemetry highlights, Gemini vision
+clip in the highlight reel pipeline. Telemetry highlights, vision-model
 hits, Strava segments, and manual labels all map onto this shape. The
 reviewer (whichever one is in use) reads + writes proposals; the
 composer consumes approved proposals.

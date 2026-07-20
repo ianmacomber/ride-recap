@@ -26,6 +26,9 @@ dependencies = [
     "click>=8.1.0",
     "pydantic-settings>=2.0",
     "google-genai>=1.0",
+    # >=1.66 ships client.responses.parse (Responses API + Structured Outputs).
+    # 1.40 has no Responses resource — do not lower this floor.
+    "openai>=1.66.0",
     "garminconnect>=0.3.0",
     "flask>=3.0",
     "streamlit>=1.35.0",

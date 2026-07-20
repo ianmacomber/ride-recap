@@ -15,6 +15,7 @@
     "raw_sum": 34,
     "clip_type": "landmark",
     "crop_x": 50,
-    "reason": "Cruising toward the iconic George Washington Bridge tower on a sunny day."
+    "reason": "Cruising toward the iconic George Washington Bridge tower on a sunny day.",
+    "ride_time_secs": 9203.5
   }
 ]

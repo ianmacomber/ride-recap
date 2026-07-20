@@ -15,7 +15,8 @@
     "raw_sum": 30,
     "clip_type": "urban",
     "crop_x": 50,
-    "reason": "Golden hour cruise along NYC's West Side path past modern skyline"
+    "reason": "Golden hour cruise along NYC's West Side path past modern skyline",
+    "ride_time_secs": 342.4
   },
   {
     "clip_name": "GX010333.MP4",
@@ -33,6 +34,7 @@
     "raw_sum": 14,
     "clip_type": "transition",
     "crop_x": 50,
-    "reason": "Entering a dark underpass under the West Side Highway deck."
+    "reason": "Entering a dark underpass under the West Side Highway deck.",
+    "ride_time_secs": 357.0
   }
 ]

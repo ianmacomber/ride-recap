@@ -1,0 +1,97 @@
+[
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 0,
+    "video_end": 7.0,
+    "anchor_video_secs": 2.1,
+    "peak_offset": 0.3,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 3,
+      "scenery": 7,
+      "subject": 4
+    },
+    "raw_sum": 27,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Morning light on climb with visible deer and strong gradient",
+    "ride_time_secs": 6347.1
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 15.0,
+    "video_end": 25.0,
+    "anchor_video_secs": 21.0,
+    "peak_offset": 0.6,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 5
+    },
+    "raw_sum": 30,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Bright tree-lined steep climb with strong power output",
+    "ride_time_secs": 6366.0
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 35.0,
+    "video_end": 125.0,
+    "anchor_video_secs": 116.0,
+    "peak_offset": 0.9,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 7,
+      "subject": 4
+    },
+    "raw_sum": 29,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Bright shaded climb with strong power, moderate motion",
+    "ride_time_secs": 6461.0
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 135.0,
+    "video_end": 145.0,
+    "anchor_video_secs": 141.0,
+    "peak_offset": 0.6,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 4,
+      "scenery": 7,
+      "subject": 2
+    },
+    "raw_sum": 26,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Quiet early morning climb in dappled shade, pleasant trees and houses",
+    "ride_time_secs": 6486.0
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 180.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 183.0,
+    "peak_offset": 0.3,
+    "rubric": {
+      "light": 7,
+      "composition": 5,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 2
+    },
+    "raw_sum": 22,
+    "clip_type": "descent",
+    "crop_x": 50,
+    "reason": "Sunny descent with mild speed and shadows, no clear subject",
+    "ride_time_secs": 6528.0
+  }
+]

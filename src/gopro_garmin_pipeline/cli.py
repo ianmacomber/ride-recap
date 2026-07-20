@@ -166,7 +166,7 @@ def require_ffmpeg() -> None:
     Every video path in this project shells out to ffmpeg. Without this the
     first failure is a bare FileNotFoundError from deep inside a worker — and
     inside `process` it surfaces even worse, swallowed by the scan's broad
-    exception handler and reported as "Gemini scan failed", which sends you
+    exception handler and reported as "vision scan failed", which sends you
     debugging the wrong system entirely.
     """
     missing = [t for t in _FFMPEG_TOOLS if shutil.which(t) is None]
@@ -352,8 +352,14 @@ def burn(video_path: Path, fit_file: Path, output: Path | None, offset: float,
 @click.option("--strava-activity", type=int, default=None,
               help="Strava activity ID — injects popular segments as candidates")
 @click.option("--preview", is_flag=True, help="Use fast preview encoding (VideoToolbox) instead of master (libx264)")
-@click.option("--skip-gemini", is_flag=True, help="Skip Gemini vision scan")
-@click.option("--skip-narrative", is_flag=True, help="Skip Gemini narrative selection — fall back to greedy ranking")
+@click.option(
+    "--skip-vision", "--skip-gemini", "skip_gemini", is_flag=True,
+    help="Skip the configured vision-model scan",
+)
+@click.option(
+    "--skip-narrative", is_flag=True,
+    help="Skip model narrative selection — fall back to greedy ranking",
+)
 @click.option("--no-upload", is_flag=True, help="Skip 1080p compress + Drive upload after compose")
 @click.option("--origin", default=None,
               help="Title + start-pin label on the recap card (e.g. 'CENTRAL PARK'). "
@@ -466,7 +472,10 @@ def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_di
 @click.option("--landscape-duration", default=60.0, help="Landscape video duration (seconds)")
 @click.option("--portrait-duration", default=30.0, help="Portrait video duration (seconds)")
 @click.option("--segment-duration", default=3.0, help="Clip segment duration (seconds)")
-@click.option("--skip-gemini", is_flag=True, help="Skip Gemini vision scan")
+@click.option(
+    "--skip-vision", "--skip-gemini", "skip_gemini", is_flag=True,
+    help="Skip the configured vision-model scan",
+)
 @click.option("--skip-review", is_flag=True, help="Skip candidate review, auto-select best")
 @click.option("--no-upload", is_flag=True, help="Skip 1080p compress + Drive upload after compose")
 @click.option("--port", default=8502, help="Port for candidate reviewer")
@@ -508,7 +517,7 @@ def process(date_folder: Path, offset: float, no_auto_sync: bool,
       0. Auto-sync the GoPro and FIT clocks via GPMF GPS (unless
          --offset is explicitly set or --no-auto-sync is passed).
       1. Discover GoPro videos + FIT file in the folder
-      2. Generate candidates from telemetry + Strava + Gemini + labels
+      2. Generate candidates from telemetry + Strava + vision + labels
       3. Launch candidate reviewer (or auto-select if --skip-review)
       4. Compose landscape + portrait videos from selections
     """
@@ -657,7 +666,7 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
 
         # Run selection here so we know which moments to mark as `auto`.
         # compose_highlight will re-select internally with the same logic
-        # — same inputs, deterministic output (modulo Gemini narrative
+        # — same inputs, deterministic output (modulo model narrative
         # selection, which is allowed a small amount of nondeterminism).
         from .composer import select_segments
         landscape_segs = select_segments(
@@ -967,23 +976,26 @@ def garmin_download(activity_id: int | None, latest: bool, target_date, output_d
 @click.argument("date_folder", type=click.Path(exists=True, path_type=Path))
 @click.option("--offset", default=0.0, help="Time offset in seconds (FIT - GoPro)")
 def compare(date_folder: Path, offset: float):
-    """Compare human labels vs Gemini scan output for a ride.
+    """Compare human labels vs vision-model scan output for a ride.
 
-    DATE_FOLDER: Date folder containing ride_labels.json and .gemini_cache/
+    DATE_FOLDER: Date folder containing ride_labels.json and .{provider}_cache/
 
     Produces a structured comparison report showing:
-      - Matched moments (both human and Gemini agree)
-      - Label-only moments (Gemini missed)
-      - Gemini-only moments (user didn't flag)
+      - Matched moments (both human and model agree)
+      - Label-only moments (model missed)
+      - Model-only moments (user didn't flag)
       - Systematic pattern analysis
+
+    Report is written as prompt_eval_{provider}_{model}.json for the
+    active MODEL_PROVIDER.
     """
-    from .prompt_eval import compare_ride, enrich_gemini_hits_with_ride_time
+    from .prompt_eval import compare_ride, enrich_model_hits_with_ride_time
 
-    # Enrich Gemini cache with ride-relative timestamps for alignment
-    click.echo("Enriching Gemini cache with ride timestamps...")
-    enrich_gemini_hits_with_ride_time(date_folder, offset)
+    # Enrich provider cache with ride-relative timestamps for alignment
+    click.echo("Enriching model cache with ride timestamps...")
+    enrich_model_hits_with_ride_time(date_folder, offset)
 
-    click.echo("\nComparing labels vs Gemini scan...")
+    click.echo("\nComparing labels vs model scan...")
     report = compare_ride(date_folder)
     report.print_summary()
 
@@ -991,13 +1003,13 @@ def compare(date_folder: Path, offset: float):
 @main.command("eval-prompt")
 @click.argument("date_folders", nargs=-1, type=click.Path(exists=True, path_type=Path))
 def eval_prompt_cmd(date_folders: tuple[Path, ...]):
-    """Analyze label/Gemini comparison and suggest prompt improvements.
+    """Analyze label/model comparison and suggest prompt improvements.
 
-    DATE_FOLDERS: One or more ride folders with prompt_eval.json files.
+    DATE_FOLDERS: One or more ride folders with comparison reports.
     Run 'compare' first to generate comparison reports.
 
-    Uses Gemini to analyze systematic patterns in what the scan prompt
-    gets right vs wrong, and suggests specific prompt changes.
+    Uses the active MODEL_PROVIDER to analyze systematic patterns in what
+    the scan prompt gets right vs wrong, and suggests specific changes.
     """
     from .prompt_eval import eval_prompt
 
@@ -1139,12 +1151,15 @@ def ranker_collect(date_folder, selection_file):
 @main.command("compare-features")
 @click.argument("date_folder", type=click.Path(exists=True))
 @click.option("--strava-activity", type=int, default=None, help="Strava activity ID")
-@click.option("--skip-gemini", is_flag=True, help="Skip Gemini vision scan")
+@click.option(
+    "--skip-vision", "--skip-gemini", "skip_gemini", is_flag=True,
+    help="Skip the configured vision-model scan",
+)
 def compare_features(date_folder, strava_activity, skip_gemini):
-    """Run selection two ways for A/B comparison: greedy vs Gemini narrative.
+    """Run selection two ways for A/B comparison: greedy vs model narrative.
 
     Generates candidates once, then runs selection both with and without
-    Gemini narrative selection. Saves each variant's selection to
+    configured-model narrative selection. Saves each variant's selection to
     <date_folder>/selection_variant_<name>.json for side-by-side review.
     Does NOT burn overlays — use compose-selected on the variant you prefer.
     """

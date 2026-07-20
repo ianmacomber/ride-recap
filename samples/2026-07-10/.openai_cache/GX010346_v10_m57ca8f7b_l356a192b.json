@@ -1,0 +1,21 @@
+[
+  {
+    "clip_name": "GX010346.MP4",
+    "video_start": 0,
+    "video_end": 5.0,
+    "anchor_video_secs": 1.0,
+    "peak_offset": 0.2,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 2
+    },
+    "raw_sum": 24,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Bridge walkway with bright light but low motion and weak subject",
+    "ride_time_secs": 9202.0
+  }
+]

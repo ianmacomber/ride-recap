@@ -1,0 +1,40 @@
+[
+  {
+    "clip_name": "GX010350.MP4",
+    "video_start": 0,
+    "video_end": 7.0,
+    "anchor_video_secs": 3.8500000000000005,
+    "peak_offset": 0.55,
+    "rubric": {
+      "light": 7,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 8,
+      "subject": 6
+    },
+    "raw_sum": 33,
+    "clip_type": "scenery",
+    "crop_x": 50,
+    "reason": "Golden-hour skyline reveal under clear sky, urban grandeur",
+    "ride_time_secs": 11254.9
+  },
+  {
+    "clip_name": "GX010350.MP4",
+    "video_start": 45.0,
+    "video_end": 55.0,
+    "anchor_video_secs": 50.5,
+    "peak_offset": 0.55,
+    "rubric": {
+      "light": 6,
+      "composition": 7,
+      "motion": 5,
+      "scenery": 8,
+      "subject": 6
+    },
+    "raw_sum": 32,
+    "clip_type": "scenery",
+    "crop_x": 50,
+    "reason": "Golden-hour skyline reveal with urban motion blur",
+    "ride_time_secs": 11301.5
+  }
+]

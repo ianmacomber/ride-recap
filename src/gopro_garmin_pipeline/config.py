@@ -22,9 +22,27 @@ class Settings(BaseSettings):
     strava_client_id: str = ""
     strava_client_secret: str = ""
 
+    # --- Model provider (one provider powers the entire run) ---
+    # gemini (default) | openai | local. Vision scan, narrative select, and
+    # prompt eval all use this provider — never mixed in a single run.
+    model_provider: str = "gemini"
+
     # --- Gemini ---
     gemini_api_key: str = ""
     gemini_model: str = "gemini-3.5-flash"
+
+    # --- OpenAI ---
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4.1-mini"
+
+    # --- Local OpenAI-compatible VLM (MLX-VLM / Ollama / LM Studio / vLLM) ---
+    # Used when MODEL_PROVIDER=local. Prefers json_schema structured outputs
+    # (MLX-VLM); falls back to free-form JSON for less capable servers.
+    local_base_url: str = "http://localhost:8080/v1"
+    local_api_key: str = "local"
+    local_model: str = ""
+    local_max_concurrency: int = 1
+    local_timeout_seconds: float = 600.0
 
     # --- OpenStreetMap ---
     # Nominatim and Overpass require a contact address on every request so

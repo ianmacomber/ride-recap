@@ -1,0 +1,346 @@
+{
+  "date_folder": "samples/2026-07-10",
+  "summary": {
+    "provider": "openai",
+    "model": "gpt-4.1-mini",
+    "n_labels": 9,
+    "n_model_hits": 23,
+    "n_matched": 8,
+    "n_label_only": 1,
+    "n_model_only": 15,
+    "precision": 0.348,
+    "recall": 0.889
+  },
+  "patterns": {
+    "model_misses_by_type": {
+      "climb": 1
+    },
+    "model_overflag_by_clip_type": {
+      "urban": 3,
+      "transition": 2,
+      "climb": 5,
+      "descent": 5
+    },
+    "score_agreement": {
+      "n": 8,
+      "visual_mean_diff": -1.62,
+      "action_mean_diff": -2.0
+    },
+    "type_agreement": {
+      "matching": 3,
+      "total": 8,
+      "rate": 0.38
+    },
+    "avg_matched_scores": {
+      "visual": 5.6,
+      "action": 3.8
+    },
+    "avg_model_only_scores": {
+      "visual": 5.5,
+      "action": 3.9
+    },
+    "min_matched_max_score": 4
+  },
+  "matched": [
+    {
+      "ride_time_secs": 351,
+      "ride_time_str": "5:51",
+      "source": "both",
+      "clip_name": "GX010333.MP4",
+      "video_secs": 29.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 5,
+      "label_notes": "pretty flowers",
+      "model_visual": 4,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Ride enters and continues under an urban overpass, enclosed space lowers scenery"
+    },
+    {
+      "ride_time_secs": 1521,
+      "ride_time_str": "25:21",
+      "source": "both",
+      "clip_name": "GX010336.MP4",
+      "video_secs": 23.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 5,
+      "label_notes": "pretty view",
+      "model_visual": 4,
+      "model_action": 4,
+      "model_clip_type": "urban",
+      "model_reason": "Open urban road with distant bridge, moderate speed cruising"
+    },
+    {
+      "ride_time_secs": 2591,
+      "ride_time_str": "43:11",
+      "source": "both",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 60.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 5,
+      "label_notes": "George Washington bridge",
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "descent",
+      "model_reason": "Descent with greenery and bridge glimpse, moderate speed, low power"
+    },
+    {
+      "ride_time_secs": 2913,
+      "ride_time_str": "48:33",
+      "source": "both",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 24.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 8,
+      "label_notes": "hudson with speed",
+      "model_visual": 7,
+      "model_action": 4,
+      "model_clip_type": "descent",
+      "model_reason": "Sunny fast descent past river with open roadway and greenery"
+    },
+    {
+      "ride_time_secs": 4921,
+      "ride_time_str": "1:22:01",
+      "source": "both",
+      "clip_name": "GX010341.MP4",
+      "video_secs": 5.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 5,
+      "label_notes": "9W sign",
+      "model_visual": 6,
+      "model_action": 3,
+      "model_clip_type": "scenery",
+      "model_reason": "Pleasant quiet road with dappled light but minimal action"
+    },
+    {
+      "ride_time_secs": 6347,
+      "ride_time_str": "1:45:47",
+      "source": "both",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 2.0,
+      "label_type": "action",
+      "label_visual": 7,
+      "label_action": 8,
+      "label_notes": "Deer!",
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Morning light on climb with visible deer and strong gradient"
+    },
+    {
+      "ride_time_secs": 9202,
+      "ride_time_str": "2:33:22",
+      "source": "both",
+      "clip_name": "GX010346.MP4",
+      "video_secs": 1.0,
+      "label_type": "urban",
+      "label_visual": 8,
+      "label_action": 5,
+      "label_notes": "bridge",
+      "model_visual": 6,
+      "model_action": 3,
+      "model_clip_type": "urban",
+      "model_reason": "Bridge walkway with bright light but low motion and weak subject"
+    },
+    {
+      "ride_time_secs": 11253,
+      "ride_time_str": "3:07:33",
+      "source": "both",
+      "clip_name": "GX010350.MP4",
+      "video_secs": 2.0,
+      "label_type": "urban",
+      "label_visual": 8,
+      "label_action": 5,
+      "label_notes": "hudson yards",
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "urban",
+      "model_reason": "Bright city street with strong architectural lines, moderate motion"
+    }
+  ],
+  "label_only": [
+    {
+      "ride_time_secs": 6398,
+      "ride_time_str": "1:46:38",
+      "source": "label",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 53.0,
+      "label_type": "climb",
+      "label_visual": 8,
+      "label_action": 8,
+      "label_notes": "climb"
+    }
+  ],
+  "model_only": [
+    {
+      "ride_time_secs": 329.0,
+      "ride_time_str": "5:29",
+      "source": "openai",
+      "clip_name": "GX010333.MP4",
+      "video_secs": 7.0,
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "urban",
+      "model_reason": "Pleasant early evening light with urban park and city buildings"
+    },
+    {
+      "ride_time_secs": 1506.0,
+      "ride_time_str": "25:06",
+      "source": "openai",
+      "clip_name": "GX010336.MP4",
+      "video_secs": 8.0,
+      "model_visual": 4,
+      "model_action": 2,
+      "model_clip_type": "transition",
+      "model_reason": "Cruising downhill on an ordinary urban street with sunset sky"
+    },
+    {
+      "ride_time_secs": 1546.0,
+      "ride_time_str": "25:46",
+      "source": "openai",
+      "clip_name": "GX010336.MP4",
+      "video_secs": 48.0,
+      "model_visual": 2,
+      "model_action": 2,
+      "model_clip_type": "transition",
+      "model_reason": "Stuck behind a bus on flat road, slow motion, limited subject"
+    },
+    {
+      "ride_time_secs": 2670.0,
+      "ride_time_str": "44:30",
+      "source": "openai",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 139.0,
+      "model_visual": 7,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Climbing a leafy road with dappled sunlight, moderate motion"
+    },
+    {
+      "ride_time_secs": 2693.0,
+      "ride_time_str": "44:53",
+      "source": "openai",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 162.0,
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Golden hour light on leafy climb, moderate motion, no clear subject"
+    },
+    {
+      "ride_time_secs": 2716.0,
+      "ride_time_str": "45:16",
+      "source": "openai",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 185.0,
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "descent",
+      "model_reason": "Nice light and greenery, gentle downhill cruise, no clear subject"
+    },
+    {
+      "ride_time_secs": 2894.0,
+      "ride_time_str": "48:14",
+      "source": "openai",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 5.0,
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "descent",
+      "model_reason": "Descending shaded tree-lined road with nice light but no clear riders"
+    },
+    {
+      "ride_time_secs": 3036.0,
+      "ride_time_str": "50:36",
+      "source": "openai",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 147.0,
+      "model_visual": 6,
+      "model_action": 6,
+      "model_clip_type": "climb",
+      "model_reason": "Sunlight dappled climb on stone path, steady moderate effort"
+    },
+    {
+      "ride_time_secs": 3121.0,
+      "ride_time_str": "52:01",
+      "source": "openai",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 232.0,
+      "model_visual": 6,
+      "model_action": 6,
+      "model_clip_type": "descent",
+      "model_reason": "Speedy descent through dappled woodland light, nice motion and setting"
+    },
+    {
+      "ride_time_secs": 3137.0,
+      "ride_time_str": "52:17",
+      "source": "openai",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 248.0,
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "descent",
+      "model_reason": "Fast descent with sun filtering through trees, no clear subject"
+    },
+    {
+      "ride_time_secs": 4936.0,
+      "ride_time_str": "1:22:16",
+      "source": "openai",
+      "clip_name": "GX010341.MP4",
+      "video_secs": 20.0,
+      "model_visual": 5,
+      "model_action": 4,
+      "model_clip_type": "urban",
+      "model_reason": "Calm ride on tree-lined street, steady pace with good light"
+    },
+    {
+      "ride_time_secs": 6366.0,
+      "ride_time_str": "1:46:06",
+      "source": "openai",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 21.0,
+      "model_visual": 6,
+      "model_action": 5,
+      "model_clip_type": "climb",
+      "model_reason": "Bright tree-lined steep climb with strong power output"
+    },
+    {
+      "ride_time_secs": 6461.0,
+      "ride_time_str": "1:47:41",
+      "source": "openai",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 116.0,
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Bright shaded climb with strong power, moderate motion"
+    },
+    {
+      "ride_time_secs": 6486.0,
+      "ride_time_str": "1:48:06",
+      "source": "openai",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 141.0,
+      "model_visual": 6,
+      "model_action": 3,
+      "model_clip_type": "urban",
+      "model_reason": "Quiet early morning climb in dappled shade, pleasant trees and houses"
+    },
+    {
+      "ride_time_secs": 6528.0,
+      "ride_time_str": "1:48:48",
+      "source": "openai",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 183.0,
+      "model_visual": 4,
+      "model_action": 3,
+      "model_clip_type": "descent",
+      "model_reason": "Sunny descent with mild speed and shadows, no clear subject"
+    }
+  ]
+}

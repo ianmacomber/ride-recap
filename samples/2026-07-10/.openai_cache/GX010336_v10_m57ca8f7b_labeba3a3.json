@@ -1,0 +1,59 @@
+[
+  {
+    "clip_name": "GX010336.MP4",
+    "video_start": 0,
+    "video_end": 10.0,
+    "anchor_video_secs": 8.0,
+    "peak_offset": 0.8,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 1
+    },
+    "raw_sum": 17,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Cruising downhill on an ordinary urban street with sunset sky",
+    "ride_time_secs": 1506.0
+  },
+  {
+    "clip_name": "GX010336.MP4",
+    "video_start": 15.0,
+    "video_end": 25.0,
+    "anchor_video_secs": 20.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 5,
+      "motion": 5,
+      "scenery": 4,
+      "subject": 2
+    },
+    "raw_sum": 20,
+    "clip_type": "urban",
+    "crop_x": 50,
+    "reason": "Open urban road with distant bridge, moderate speed cruising",
+    "ride_time_secs": 1518.0
+  },
+  {
+    "clip_name": "GX010336.MP4",
+    "video_start": 45.0,
+    "video_end": 55.0,
+    "anchor_video_secs": 48.0,
+    "peak_offset": 0.3,
+    "rubric": {
+      "light": 4,
+      "composition": 3,
+      "motion": 3,
+      "scenery": 2,
+      "subject": 2
+    },
+    "raw_sum": 14,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Stuck behind a bus on flat road, slow motion, limited subject",
+    "ride_time_secs": 1546.0
+  }
+]

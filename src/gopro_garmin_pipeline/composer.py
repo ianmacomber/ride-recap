@@ -5,7 +5,7 @@ Multi-source candidate generation pipeline:
      climbs, sprints detected from Garmin data alone (highlights.py).
   2. Strava segments — popular segments on the route, scored via
      log(star_count) + telemetry at midpoint.
-  3. Gemini vision — sparse frame scan of entire ride for visual interest.
+  3. Vision model — sparse frame scan of entire ride for visual interest.
   4. Manual labels — optional enrichment from ride_labels.json.
 
 All sources are fused, deduplicated (nearby candidates merged), capped
@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .fit_parser import RideData
+from .models import VISION_SOURCES
 from .sync import SyncedClip
 from .utils import MS_TO_MPH, normalize_label_scale, rating_visual_action
 
@@ -178,7 +179,7 @@ class ComposerConfig:
     # a halt — are dead footage. Set to 0 to disable the motion-gate.
     min_motion_mph: float = 5.0
     skip_gemini: bool = False
-    skip_narrative: bool = False  # disable Gemini narrative selection (use greedy)
+    skip_narrative: bool = False  # disable model narrative selection (use greedy)
     include_outro: bool = True  # crossfade last segment into recap card
     outro_crossfade_secs: float = 3.0
     outro_lead_in_secs: float = 2.0  # extra normal-playback seconds before crossfade
@@ -299,7 +300,7 @@ def _apply_liveness_penalty(candidates: list[Segment], ride: RideData) -> None:
 
     Skips label-sourced and must-include candidates — the rider's own
     picks are editorial ground truth. Applied to the fused pool BEFORE
-    selection, so the lower scores flow through both the Gemini narrative
+    selection, so the lower scores flow through both the model narrative
     pass (which sees seg.score) and the diversity-aware greedy loop.
     """
     damped = 0
@@ -605,7 +606,14 @@ def _normalize_scores(candidates: list[Segment]) -> None:
                 s.score = _NON_GEMINI_SCORE_FLOOR + ((s.score - lo) / span) * span_size
 
 
-_SOURCE_PRIORITY = {"label": 0, "telemetry": 1, "strava": 2, "clip": 3, "gemini": 4}
+# Vision providers share the same priority band as historical "gemini".
+_SOURCE_PRIORITY = {
+    "label": 0,
+    "telemetry": 1,
+    "strava": 2,
+    "clip": 3,
+    **{src: 4 for src in VISION_SOURCES},
+}
 
 # Review-cap tunables: fraction of slots filled top-down by score, then the
 # remainder sampled round-robin across these score bands so weak Gemini
@@ -770,16 +778,16 @@ def _fuse_candidates(candidates: list[Segment], cap: int = _CANDIDATE_CAP) -> li
                 fused[i] = winner
                 merged = True
                 break
-            if (same_source and seg.source == "gemini"
+            if (same_source and seg.source in VISION_SOURCES
                     and dt < _GEMINI_DEDUP_WINDOW):
-                # Two Gemini-rated frames this close describe the same
+                # Two vision-rated frames this close describe the same
                 # scene (e.g. the same bridge crossing flagged twice with
                 # slightly different wording). Collapse to the higher-scored
                 # one so the cut never shows the same view back-to-back.
-                # Gemini scores are already rubric-derived (_normalize_scores
+                # Vision scores are already rubric-derived (_normalize_scores
                 # above), so .score IS the visual-quality comparison. Gated to
-                # Gemini on purpose: adjacent telemetry spikes ARE independent
-                # events and must stay separate.
+                # vision sources on purpose: adjacent telemetry spikes ARE
+                # independent events and must stay separate.
                 winner = seg if seg.score > existing.score else existing
                 _union_review_window(winner, seg, existing)
                 fused[i] = winner
@@ -814,7 +822,7 @@ def _fuse_candidates(candidates: list[Segment], cap: int = _CANDIDATE_CAP) -> li
     for seg in fused:
         if seg.rubric:
             continue
-        if "gemini" in seg.sources:
+        if VISION_SOURCES.intersection(seg.sources):
             continue
         if seg.score > _BLIND_TELEMETRY_CEILING:
             seg.score = _BLIND_TELEMETRY_CEILING
@@ -880,7 +888,7 @@ def _generate_candidates(
     Sources (all optional except ride):
       1. FIT telemetry highlights (always available)
       2. Strava segment efforts (if activity ID provided)
-      3. Gemini vision candidates (if not skipped)
+      3. Vision-model candidates (if not skipped)
       4. Manual labels (if provided)
     """
     all_candidates: list[Segment] = []
@@ -910,9 +918,10 @@ def _generate_candidates(
         print(f"  Strava segments: {len(strava)} candidates")
         all_candidates.extend(strava)
 
-    # 3. Gemini vision
+    # 3. Vision model
     if gemini_candidates:
-        print(f"  Gemini vision: {len(gemini_candidates)} candidates")
+        src = gemini_candidates[0].source or "vision"
+        print(f"  Vision ({src}): {len(gemini_candidates)} candidates")
         all_candidates.extend(gemini_candidates)
 
     # 4. Manual labels
@@ -1180,17 +1189,18 @@ def _narrative_select(
     budget_secs: float,
     layout: str = "landscape",
 ) -> list[Segment] | None:
-    """Ask Gemini to select clips that tell a compelling ride story.
+    """Ask the configured model to select clips that tell a ride story.
 
     Passes the full candidate list with timestamps, scores, descriptions, and
-    clip types. Gemini returns indices of selected clips in narrative order.
+    clip types. Returns indices of selected clips in narrative order.
     Falls back to None on any failure (caller should use greedy selection).
+    Uses the same MODEL_PROVIDER as the vision scan — never a second provider.
     """
     from .config import get_settings
-    from .utils import parse_json_response
+    from .models import get_model_adapter, provider_api_key
 
     settings = get_settings()
-    if not settings.gemini_api_key:
+    if not provider_api_key(settings):
         return None
 
     candidates = sorted(candidates, key=lambda s: s.ride_time_secs)
@@ -1200,7 +1210,7 @@ def _narrative_select(
     for i, seg in enumerate(candidates):
         notes = seg.label.get("notes", "")[:60]
         clip_type = seg.label.get("clip_type", seg.label.get("type", ""))
-        # Gemini candidates carry a rubric, not visual/action — read through
+        # Vision candidates carry a rubric, not visual/action — read through
         # the fold so they don't all report 0 to the selector.
         visual, action = rating_visual_action(seg.label)
         sources = ",".join(seg.sources) if seg.sources else seg.source
@@ -1232,22 +1242,14 @@ def _narrative_select(
     )
 
     def _call(prompt_text: str) -> list:
-        """One Gemini call → flat list of candidate indices (flattening any
+        """One model call → flat list of candidate indices (flattening any
         nested arrays like [[0],[5]]). Empty list on a non-list response."""
-        from google import genai
-        from google.genai import types
-
-        client = genai.Client(api_key=settings.gemini_api_key)
-        response = client.models.generate_content(
-            model=settings.gemini_model,
-            contents=[types.Content(parts=[types.Part.from_text(text=prompt_text)])],
-            config=types.GenerateContentConfig(
-                temperature=0.3,
-                max_output_tokens=1024,
-                thinking_config=types.ThinkingConfig(thinking_budget=256),
-            ),
+        adapter = get_model_adapter(settings)
+        result = adapter.complete_json(
+            prompt=prompt_text,
+            temperature=0.3,
+            max_output_tokens=1024,
         )
-        result = parse_json_response(response.text)
         if not isinstance(result, list):
             return []
         flat = []
@@ -1276,7 +1278,7 @@ def _narrative_select(
         seen: set = set()
         _absorb(_call(prompt), selected, seen)
 
-        # Re-ask once if Gemini under-delivered on the count. Models anchor
+        # Re-ask once if the model under-delivered on the count. Models anchor
         # on a short answer and quietly ignore "exactly N" (it returned ~n/2
         # before this). A targeted follow-up naming what's already chosen
         # reliably closes the gap and costs a fraction of a cent.
@@ -1299,7 +1301,8 @@ def _narrative_select(
             return None
 
         selected.sort(key=lambda s: s.ride_time_secs)  # chronological
-        print(f"  Gemini narrative selection: {len(selected)} clips "
+        provider = (settings.model_provider or "gemini").lower()
+        print(f"  Narrative selection ({provider}): {len(selected)} clips "
               f"(target {n_clips})")
         return selected
 
@@ -1321,8 +1324,8 @@ def select_segments(
 ) -> list[Segment]:
     """Two-stage selection: generate candidates, then rank and select for budget.
 
-    First tries Gemini narrative selection (asks Gemini to pick clips that
-    tell a compelling ride story). Falls back to greedy gap-filling on failure.
+    First asks the configured model to pick clips that tell a compelling ride
+    story. Falls back to greedy gap-filling on failure.
 
     If precomputed_candidates is provided, skips candidate generation and
     uses those directly. Otherwise generates from all available sources.
@@ -1350,14 +1353,14 @@ def select_segments(
     # the burn duration, not s.duration.
     n = max(1, int(budget_secs / config.segment_duration))
 
-    # Try Gemini narrative selection first — apply proximity-aware filter
-    # and backfill with greedy if Gemini returned too few or clustered clips.
+    # Try model narrative selection first — apply proximity-aware filter and
+    # backfill with greedy if the model returned too few or clustered clips.
     if not config.skip_narrative:
         narrative = _narrative_select(candidates, n, budget_secs, layout)
         if narrative is not None:
             # Diversity-aware filter. We rank narrative picks by their
             # boosted score (descending) so the strongest claims its spot
-            # first — order-independent of Gemini's story-order response.
+            # first — order-independent of the model's story-order response.
             # A pick survives unless the crowding penalty drives its
             # effective score below zero, i.e., it's clearly net-negative
             # against what's already in. No absolute threshold — that
@@ -1781,7 +1784,7 @@ def generate_all_candidates(
         except Exception as exc:
             print(f"  Warning: couldn't fetch Strava data: {exc}")
 
-    # Optional: Gemini sparse scan
+    # Optional: configured vision-model sparse scan
     gemini_candidates = None
     if not config.skip_gemini:
         try:
@@ -1790,7 +1793,7 @@ def generate_all_candidates(
                 video_dir, synced_clips, ride, config, labels=labels,
             )
         except Exception as exc:
-            print(f"  Warning: Gemini scan failed: {exc}")
+            print(f"  Warning: vision scan failed: {exc}")
 
     # Generate and fuse
     print("\nGenerating candidates...")

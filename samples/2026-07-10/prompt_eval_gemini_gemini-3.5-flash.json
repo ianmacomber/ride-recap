@@ -1,0 +1,359 @@
+{
+  "date_folder": "samples/2026-07-10",
+  "summary": {
+    "provider": "gemini",
+    "model": "gemini-3.5-flash",
+    "n_labels": 9,
+    "n_model_hits": 24,
+    "n_matched": 8,
+    "n_label_only": 1,
+    "n_model_only": 16,
+    "precision": 0.333,
+    "recall": 0.889
+  },
+  "patterns": {
+    "model_misses_by_type": {
+      "scenery": 1
+    },
+    "model_overflag_by_clip_type": {
+      "urban": 3,
+      "descent": 2,
+      "landmark": 2,
+      "scenery": 2,
+      "transition": 2,
+      "climb": 5
+    },
+    "score_agreement": {
+      "n": 8,
+      "visual_mean_diff": -1.12,
+      "action_mean_diff": -1.25
+    },
+    "type_agreement": {
+      "matching": 2,
+      "total": 8,
+      "rate": 0.25
+    },
+    "avg_matched_scores": {
+      "visual": 6.2,
+      "action": 4.9
+    },
+    "avg_model_only_scores": {
+      "visual": 5.8,
+      "action": 4.4
+    },
+    "min_matched_max_score": 3
+  },
+  "matched": [
+    {
+      "ride_time_secs": 351,
+      "ride_time_str": "5:51",
+      "source": "both",
+      "clip_name": "GX010333.MP4",
+      "video_secs": 29.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 5,
+      "label_notes": "pretty flowers",
+      "model_visual": 2,
+      "model_action": 3,
+      "model_clip_type": "transition",
+      "model_reason": "Entering a dark underpass under the West Side Highway deck."
+    },
+    {
+      "ride_time_secs": 1521,
+      "ride_time_str": "25:21",
+      "source": "both",
+      "clip_name": "GX010336.MP4",
+      "video_secs": 23.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 5,
+      "label_notes": "pretty view",
+      "model_visual": 8,
+      "model_action": 6,
+      "model_clip_type": "landmark",
+      "model_reason": "George Washington Bridge comes into view under soft morning light."
+    },
+    {
+      "ride_time_secs": 2913,
+      "ride_time_str": "48:33",
+      "source": "both",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 24.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 8,
+      "label_notes": "hudson with speed",
+      "model_visual": 8,
+      "model_action": 8,
+      "model_clip_type": "descent",
+      "model_reason": "Fast River Road descent opening to beautiful Hudson River views."
+    },
+    {
+      "ride_time_secs": 4921,
+      "ride_time_str": "1:22:01",
+      "source": "both",
+      "clip_name": "GX010341.MP4",
+      "video_secs": 5.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 5,
+      "label_notes": "9W sign",
+      "model_visual": 4,
+      "model_action": 2,
+      "model_clip_type": "transition",
+      "model_reason": "Unremarkable transit footage on a flat, empty road bordered by trees."
+    },
+    {
+      "ride_time_secs": 6347,
+      "ride_time_str": "1:45:47",
+      "source": "both",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 2.0,
+      "label_type": "action",
+      "label_visual": 7,
+      "label_action": 8,
+      "label_notes": "Deer!",
+      "model_visual": 6,
+      "model_action": 6,
+      "model_clip_type": "incident",
+      "model_reason": "Steep climb with a close encounter passing a deer roadside."
+    },
+    {
+      "ride_time_secs": 6398,
+      "ride_time_str": "1:46:38",
+      "source": "both",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 53.0,
+      "label_type": "climb",
+      "label_visual": 8,
+      "label_action": 8,
+      "label_notes": "climb",
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Steep climb up River Road past Palisades rock faces at threshold effort."
+    },
+    {
+      "ride_time_secs": 9202,
+      "ride_time_str": "2:33:22",
+      "source": "both",
+      "clip_name": "GX010346.MP4",
+      "video_secs": 1.0,
+      "label_type": "urban",
+      "label_visual": 8,
+      "label_action": 5,
+      "label_notes": "bridge",
+      "model_visual": 8,
+      "model_action": 6,
+      "model_clip_type": "landmark",
+      "model_reason": "Cruising toward the iconic George Washington Bridge tower on a sunny day."
+    },
+    {
+      "ride_time_secs": 11253,
+      "ride_time_str": "3:07:33",
+      "source": "both",
+      "clip_name": "GX010350.MP4",
+      "video_secs": 2.0,
+      "label_type": "urban",
+      "label_visual": 8,
+      "label_action": 5,
+      "label_notes": "hudson yards",
+      "model_visual": 8,
+      "model_action": 4,
+      "model_clip_type": "urban",
+      "model_reason": "Cruising past towering Hudson Yards skyscrapers under bright New York skies."
+    }
+  ],
+  "label_only": [
+    {
+      "ride_time_secs": 2591,
+      "ride_time_str": "43:11",
+      "source": "label",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 60.0,
+      "label_type": "scenery",
+      "label_visual": 7,
+      "label_action": 5,
+      "label_notes": "George Washington bridge"
+    }
+  ],
+  "model_only": [
+    {
+      "ride_time_secs": 342.4,
+      "ride_time_str": "5:42",
+      "source": "gemini",
+      "clip_name": "GX010333.MP4",
+      "video_secs": 20.4,
+      "model_visual": 6,
+      "model_action": 5,
+      "model_clip_type": "urban",
+      "model_reason": "Golden hour cruise along NYC's West Side path past modern skyline"
+    },
+    {
+      "ride_time_secs": 1552.0,
+      "ride_time_str": "25:52",
+      "source": "gemini",
+      "clip_name": "GX010336.MP4",
+      "video_secs": 54.0,
+      "model_visual": 6,
+      "model_action": 6,
+      "model_clip_type": "urban",
+      "model_reason": "Passing close to MTA city buses on an urban bridge approach."
+    },
+    {
+      "ride_time_secs": 2537.0,
+      "ride_time_str": "42:17",
+      "source": "gemini",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 6.0,
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "descent",
+      "model_reason": "Sun-drenched solo descent down the tree-lined Palisades cliffside road."
+    },
+    {
+      "ride_time_secs": 2574.0,
+      "ride_time_str": "42:54",
+      "source": "gemini",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 43.0,
+      "model_visual": 8,
+      "model_action": 6,
+      "model_clip_type": "landmark",
+      "model_reason": "Iconic George Washington Bridge reveal climbing up tree-lined River Road."
+    },
+    {
+      "ride_time_secs": 2614.5,
+      "ride_time_str": "43:34",
+      "source": "gemini",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 83.5,
+      "model_visual": 8,
+      "model_action": 6,
+      "model_clip_type": "landmark",
+      "model_reason": "Cruising under the massive George Washington Bridge with golden hour flare."
+    },
+    {
+      "ride_time_secs": 2641.0,
+      "ride_time_str": "44:01",
+      "source": "gemini",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 110.0,
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "scenery",
+      "model_reason": "Scenic morning cruise along the tree-lined Palisades cliffs with beautiful dappled light."
+    },
+    {
+      "ride_time_secs": 2674.0,
+      "ride_time_str": "44:34",
+      "source": "gemini",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 143.0,
+      "model_visual": 7,
+      "model_action": 4,
+      "model_clip_type": "scenery",
+      "model_reason": "Scenic morning climb past the dramatic Palisades cliffs on River Road."
+    },
+    {
+      "ride_time_secs": 2719.0,
+      "ride_time_str": "45:19",
+      "source": "gemini",
+      "clip_name": "GX010338.MP4",
+      "video_secs": 188.0,
+      "model_visual": 4,
+      "model_action": 4,
+      "model_clip_type": "transition",
+      "model_reason": "Cruising through dappled morning light on a quiet, wooded park road."
+    },
+    {
+      "ride_time_secs": 3012.0,
+      "ride_time_str": "50:12",
+      "source": "gemini",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 123.0,
+      "model_visual": 7,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Climbing the historic brick road of Fort Tryon Park under dappled sunlight."
+    },
+    {
+      "ride_time_secs": 3142.0,
+      "ride_time_str": "52:22",
+      "source": "gemini",
+      "clip_name": "GX010339.MP4",
+      "video_secs": 253.0,
+      "model_visual": 7,
+      "model_action": 6,
+      "model_clip_type": "descent",
+      "model_reason": "Dynamic high-speed descent down River Road with beautiful dappled morning light."
+    },
+    {
+      "ride_time_secs": 6361.0,
+      "ride_time_str": "1:46:01",
+      "source": "gemini",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 16.0,
+      "model_visual": 4,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Anaerobic climb up steep, cracked road with sun filtering through trees"
+    },
+    {
+      "ride_time_secs": 6425.0,
+      "ride_time_str": "1:47:05",
+      "source": "gemini",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 80.0,
+      "model_visual": 5,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "High-power anaerobic climb up a rugged, tree-lined historic road."
+    },
+    {
+      "ride_time_secs": 6450.3,
+      "ride_time_str": "1:47:30",
+      "source": "gemini",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 105.3,
+      "model_visual": 4,
+      "model_action": 4,
+      "model_clip_type": "climb",
+      "model_reason": "Steep anaerobic climb up a quiet, tree-framed road with stone walls."
+    },
+    {
+      "ride_time_secs": 6470.0,
+      "ride_time_str": "1:47:50",
+      "source": "gemini",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 125.0,
+      "model_visual": 4,
+      "model_action": 3,
+      "model_clip_type": "climb",
+      "model_reason": "Solo climb up a quiet, tree-shaded hill at high power."
+    },
+    {
+      "ride_time_secs": 6521.5,
+      "ride_time_str": "1:48:41",
+      "source": "gemini",
+      "clip_name": "GX010344.MP4",
+      "video_secs": 176.5,
+      "model_visual": 4,
+      "model_action": 3,
+      "model_clip_type": "transition",
+      "model_reason": "Unremarkable transit footage on a generic park access road."
+    },
+    {
+      "ride_time_secs": 11308.0,
+      "ride_time_str": "3:08:28",
+      "source": "gemini",
+      "clip_name": "GX010350.MP4",
+      "video_secs": 57.0,
+      "model_visual": 6,
+      "model_action": 4,
+      "model_clip_type": "urban",
+      "model_reason": "Cruising past modern skyscrapers of Hudson Yards and the High Line."
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+[
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 0,
+    "video_end": 7.0,
+    "anchor_video_secs": 3.5,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 4,
+      "composition": 4,
+      "motion": 5,
+      "scenery": 4,
+      "subject": 4
+    },
+    "raw_sum": 21,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Deer pauses on trail, rider cruising through forest",
+    "ride_time_secs": 6348.5
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 48.0,
+    "video_end": 58.0,
+    "anchor_video_secs": 53.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 4
+    },
+    "raw_sum": 25,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Climbing uphill through wooded trail, rider visible at peak",
+    "ride_time_secs": 6398.0
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 90.0,
+    "video_end": 106.101,
+    "anchor_video_secs": 98.85555,
+    "peak_offset": 0.55,
+    "rubric": {
+      "light": 4,
+      "composition": 5,
+      "motion": 5,
+      "scenery": 4,
+      "subject": 4
+    },
+    "raw_sum": 22,
+    "clip_type": "climb",
+    "crop_x": 50,
+    "reason": "Cruising up a forested climb, rider visible only at frame 3",
+    "ride_time_secs": 6443.9
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 135.0,
+    "video_end": 145.0,
+    "anchor_video_secs": 140.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 7,
+      "composition": 6,
+      "motion": 5,
+      "scenery": 4,
+      "subject": 4
+    },
+    "raw_sum": 26,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Calm suburban ride, rider cruising through shaded trees",
+    "ride_time_secs": 6485.0
+  },
+  {
+    "clip_name": "GX010344.MP4",
+    "video_start": 180.0,
+    "video_end": 190.0,
+    "anchor_video_secs": 185.0,
+    "peak_offset": 0.5,
+    "rubric": {
+      "light": 6,
+      "composition": 5,
+      "motion": 4,
+      "scenery": 4,
+      "subject": 4
+    },
+    "raw_sum": 23,
+    "clip_type": "transition",
+    "crop_x": 50,
+    "reason": "Cruising through quiet residential streets, uneventful but steady motion.",
+    "ride_time_secs": 6530.0
+  }
+]

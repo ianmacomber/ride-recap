@@ -4,7 +4,7 @@ A real ride you can point the pipeline at. 44.7 miles, 3h09m elapsed, Manhattan
 up 9W and back, recorded on a handlebar GoPro with a Garmin Edge alongside.
 19 chapters, 10,381 GPS points.
 
-The sidecars live here in the repo (~116 KB). The video lives on Hugging Face,
+The sidecars live here in the repo (~216 KB). The video lives on Hugging Face,
 because it is 14 GB.
 
 ## What's in this folder
@@ -13,11 +13,16 @@ because it is 14 GB.
 |---|---|
 | `ride_labels.json` | 9 clips I rated by hand. The ground truth. |
 | `.gemini_cache/` | Gemini's `v10` ratings for all 19 chapters. The baseline. |
+| `.openai_cache/` | GPT-4.1 mini ratings for the 8 labeled chapters. |
+| `.local_cache/` | Local Qwen3-VL 8B 3-bit ratings for the same chapters. |
 | `sync.json` | Per-chapter video↔ride-time offsets from GPMF. |
 | `moments.json` | Merged scan output — what `process` produced from the above. |
+| `prompt_eval_*.json` | Reproducible provider/model comparison reports for issue #2. |
 
-Those four are enough to reproduce the scoring comparison **without downloading
-any video and without a Gemini API key**. That's the point of committing them.
+These are enough to reproduce the scoring comparison **without downloading any
+video and without an API key or local model**. The eight labeled Gemini cache
+files include ride-relative timestamps; when no MP4s are present, `compare`
+uses the label chapter names to select the same evaluation tier for every model.
 
 ## Getting the video
 

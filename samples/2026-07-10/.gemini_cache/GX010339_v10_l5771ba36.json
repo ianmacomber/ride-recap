@@ -15,7 +15,8 @@
     "raw_sum": 37,
     "clip_type": "descent",
     "crop_x": 50,
-    "reason": "Fast River Road descent opening to beautiful Hudson River views."
+    "reason": "Fast River Road descent opening to beautiful Hudson River views.",
+    "ride_time_secs": 2911.5
   },
   {
     "clip_name": "GX010339.MP4",
@@ -33,7 +34,8 @@
     "raw_sum": 30,
     "clip_type": "climb",
     "crop_x": 50,
-    "reason": "Climbing the historic brick road of Fort Tryon Park under dappled sunlight."
+    "reason": "Climbing the historic brick road of Fort Tryon Park under dappled sunlight.",
+    "ride_time_secs": 3012.0
   },
   {
     "clip_name": "GX010339.MP4",
@@ -51,6 +53,7 @@
     "raw_sum": 33,
     "clip_type": "descent",
     "crop_x": 50,
-    "reason": "Dynamic high-speed descent down River Road with beautiful dappled morning light."
+    "reason": "Dynamic high-speed descent down River Road with beautiful dappled morning light.",
+    "ride_time_secs": 3142.0
   }
 ]
