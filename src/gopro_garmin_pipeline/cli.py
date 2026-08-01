@@ -9,6 +9,7 @@ from pathlib import Path
 
 import click
 
+from . import intro_styles
 from .fit_parser import parse_fit
 from .gopro_meta import extract_all
 from .highlights import HighlightConfig, detect_highlights
@@ -330,10 +331,15 @@ def extract_frames(fit_file: Path, video_dir: Path, output_dir: Path | None,
 @click.option("--duration", "duration", default=0.0, type=float, help="Duration in seconds to render")
 @click.option("--master", is_flag=True, help="Use master encoding (libx264, high quality) instead of preview")
 @click.option("--intro", "intro_secs", default=0.0, type=float,
-              help="Opening blur→clear title card with date + time-of-day (seconds, e.g. 3)")
+              help="Opening title card with date + time-of-day (seconds, e.g. 3.4)")
+@click.option("--intro-style", default=intro_styles.DEFAULT_STYLE,
+              type=click.Choice(intro_styles.STYLES),
+              help="How the footage resolves under the opening title card")
+@click.option("--intro-reveal", "intro_reveal_secs", default=0.0, type=float,
+              help="Seconds for the footage to resolve. 0 = the style's default")
 def burn(video_path: Path, fit_file: Path, output: Path | None, offset: float,
          portrait: bool, start_time: str | None, duration: float, master: bool,
-         intro_secs: float):
+         intro_secs: float, intro_style: str, intro_reveal_secs: float):
     """Burn telemetry overlay permanently onto a video.
 
     VIDEO_PATH: Path to a GoPro .mp4 file
@@ -359,7 +365,8 @@ def burn(video_path: Path, fit_file: Path, output: Path | None, offset: float,
     burn_overlay(str(video_path), str(fit_file), str(output), offset,
                  layout=layout, start_offset=start_secs, trim_duration=duration,
                  encode_preset=ENCODE_MASTER if master else ENCODE_PREVIEW,
-                 intro_secs=intro_secs)
+                 intro_secs=intro_secs, intro_style=intro_style,
+                 intro_reveal_secs=intro_reveal_secs)
 
 
 @main.command()

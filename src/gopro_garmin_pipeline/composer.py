@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from . import intro_styles
 from .fit_parser import RideData
 from .models import VISION_SOURCES
 from .sync import SyncedClip
@@ -188,7 +189,9 @@ class ComposerConfig:
     # the recap-card graphic vocabulary. The opener plays over the first
     # ``intro_secs`` seconds, and the first clip is lengthened to fit it.
     include_intro: bool = True
-    intro_secs: float = 6.0
+    intro_secs: float = intro_styles.DEFAULT_INTRO_SECS
+    intro_style: str = intro_styles.DEFAULT_STYLE
+    intro_reveal_secs: float = 0.0
 
     # Per-ride lockup / recap card overrides. ``None`` falls back to GPS
     # derivation, then to the ``lockups`` design tokens.
@@ -209,6 +212,14 @@ class ComposerConfig:
     grade_look: str = "none"
     grade_strength: float = 0.35
     grade_wb: str = "off"  # "shot" | "off"
+
+    def __post_init__(self) -> None:
+        # Fail at config time rather than per-segment at burn time, which is
+        # after candidate generation and the Gemini spend.
+        if self.include_intro and self.intro_style not in intro_styles.STYLES:
+            raise ValueError(
+                f"unknown intro_style {self.intro_style!r}; "
+                f"expected one of {intro_styles.STYLES}")
 
     @property
     def pad_before(self) -> float:
@@ -1631,7 +1642,9 @@ def compose_from_selections(
     outro_crossfade_secs: float = 3.0,
     outro_lead_in_secs: float = 2.0,
     include_intro: bool = True,
-    intro_secs: float = 6.0,
+    intro_secs: float = intro_styles.DEFAULT_INTRO_SECS,
+    intro_style: str = intro_styles.DEFAULT_STYLE,
+    intro_reveal_secs: float = 0.0,
     origin: str | None = None,
     destination: str | None = None,
     road: str | None = None,
@@ -1778,6 +1791,8 @@ def compose_from_selections(
             portrait_crop_bias=float(seg.get("portrait_crop_bias", 0.0)),
             intro_secs=seg_intro,
             grade=grades.get(i, ""),
+            intro_style=intro_style,
+            intro_reveal_secs=intro_reveal_secs,
         )
         clips.append(out)
 
@@ -2142,6 +2157,8 @@ def compose_highlight(
                 portrait_crop_bias=seg.portrait_crop_bias,
                 intro_secs=intro_secs,
                 grade=grades.get(i, ""),
+                intro_style=config.intro_style,
+                intro_reveal_secs=config.intro_reveal_secs,
             )
             burned.append(out)
         return burned
