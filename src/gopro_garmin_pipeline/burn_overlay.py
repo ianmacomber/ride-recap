@@ -1037,6 +1037,7 @@ def burn_overlay(
     portrait_crop_bias: float = 0.0,
     lockup: str | None = None,
     intro_secs: float = 0.0,
+    grade: str = "",
 ) -> Path:
     """Burn telemetry overlay onto video.
 
@@ -1056,6 +1057,8 @@ def burn_overlay(
         ride: Pre-parsed RideData to avoid re-parsing FIT.
         encode_preset: "preview" (VideoToolbox, fast) or "master"
             (libx264, high quality, +faststart).
+        grade: ffmpeg filter chain from grade.build_filter(), applied to the
+            footage before the HUD composites. Empty string = no grade.
     """
     video_path = Path(video_path)
     output_path = Path(output_path)
@@ -1126,6 +1129,13 @@ def burn_overlay(
         base = "[base]"
     else:
         base = "[0:v]"
+
+    # Grade the footage *before* the HUD composites, never after: the overlay's
+    # white-with-black-stroke is a fixed design language and must not inherit the
+    # look's contrast curve or colour cast.
+    if grade:
+        filters.append(f"{base}{grade}[graded]")
+        base = "[graded]"
 
     if intro_secs > 0:
         # Blur→clear: crossfade a gaussian-blurred copy into the sharp copy

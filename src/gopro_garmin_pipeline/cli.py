@@ -14,6 +14,34 @@ from .gopro_meta import extract_all
 from .highlights import HighlightConfig, detect_highlights
 
 
+def _grade_options(fn):
+    """Shared colour-grade flags for process / compose / compose-selected.
+
+    Defaults leave footage untouched, so adding these to a command changes
+    nothing until the user opts in.
+    """
+    from .grade import LOOKS
+
+    fn = click.option(
+        "--look", "grade_look", default="none",
+        type=click.Choice(sorted(LOOKS), case_sensitive=False),
+        help="Shared creative look applied to every clip. Default: none.",
+    )(fn)
+    fn = click.option(
+        "--look-strength", "grade_strength", default=35, type=click.IntRange(0, 100),
+        help="Percent strength of --look. 35 is a house look; past ~50 it "
+             "starts reading as a filter. Default: 35.",
+    )(fn)
+    fn = click.option(
+        "--wb", "grade_wb", default="off",
+        type=click.Choice(["shot", "off"], case_sensitive=False),
+        help="Per-shot correction: 'shot' measures and balances each clip on "
+             "its own (levels, white balance, exposure), 'off' skips it. "
+             "Default: off.",
+    )(fn)
+    return fn
+
+
 _CREW_CACHE_PATH = Path.home() / ".ride_recap_cache" / "last_crew.txt"
 
 
@@ -378,6 +406,7 @@ def burn(video_path: Path, fit_file: Path, output: Path | None, offset: float,
 @click.option("--lockup", default=None,
               help="Full in-segment bottom-band string. Overrides origin/road for "
               "the per-clip HUD only; recap card still uses --origin/--road/--crew.")
+@_grade_options
 def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_dir: Path | None,
             offset: float, no_auto_sync: bool,
             landscape_duration: float, portrait_duration: float,
@@ -385,7 +414,9 @@ def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_di
             landscape_only: bool, strava_activity: int | None,
             preview: bool, skip_gemini: bool, skip_narrative: bool, no_upload: bool,
             origin: str | None, destination: str | None, subtitle: str | None,
-            road: str | None, crew: str | None, lockup: str | None):
+            road: str | None, crew: str | None, lockup: str | None,
+            grade_look: str = "none", grade_strength: int = 35,
+            grade_wb: str = "off"):
     """Compose highlight videos from ride telemetry + optional labels.
 
     VIDEO_DIR: Directory containing GoPro .mp4 files
@@ -443,6 +474,9 @@ def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_di
         road=fields["road"],
         crew=fields["crew"],
         lockup=lockup,
+        grade_look=grade_look,
+        grade_strength=grade_strength / 100,
+        grade_wb=grade_wb,
     )
     with keep_system_awake() as awake:
         if awake:
@@ -500,6 +534,7 @@ def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_di
               help="Anchor the recap end pin at the farthest point reached (the ride "
               "apex/turnaround) instead of where the ride ended. Use when you trained "
               "or drove home from a different town than the real destination.")
+@_grade_options
 def process(date_folder: Path, offset: float, no_auto_sync: bool,
             strava_activity: int | None,
             landscape_duration: float, portrait_duration: float,
@@ -507,7 +542,9 @@ def process(date_folder: Path, offset: float, no_auto_sync: bool,
             skip_gemini: bool, skip_review: bool, no_upload: bool, port: int,
             origin: str | None, destination: str | None, subtitle: str | None,
             road: str | None, crew: str | None, lockup: str | None,
-            far_pin: bool = False):
+            far_pin: bool = False,
+            grade_look: str = "none", grade_strength: int = 35,
+            grade_wb: str = "off"):
     """Full pipeline: detect → review → compose highlight videos.
 
     DATE_FOLDER: Date folder (e.g. data/raw/2026-04-11/) containing
@@ -562,6 +599,8 @@ def process(date_folder: Path, offset: float, no_auto_sync: bool,
             origin=fields["origin"], destination=fields["destination"],
             subtitle=fields["subtitle"], road=fields["road"],
             crew=fields["crew"], lockup=lockup, far_pin=far_pin,
+            grade_look=grade_look, grade_strength=grade_strength,
+            grade_wb=grade_wb,
         )
 
 
@@ -574,7 +613,9 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
                   origin: str | None = None, destination: str | None = None,
                   subtitle: str | None = None, road: str | None = None,
                   crew: str | None = None, lockup: str | None = None,
-                  far_pin: bool = False):
+                  far_pin: bool = False,
+                  grade_look: str = "none", grade_strength: int = 35,
+                  grade_wb: str = "off"):
     """Body of `process` — extracted so caffeinate wraps the whole run."""
     from .composer import ComposerConfig, generate_all_candidates, compose_highlight
     from .gpmf_sync import resolve_offset
@@ -628,6 +669,9 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
         crew=crew,
         lockup=lockup,
         far_pin=far_pin,
+        grade_look=grade_look,
+        grade_strength=grade_strength / 100,
+        grade_wb=grade_wb,
     )
 
     # Step 1: Generate candidates
@@ -824,12 +868,15 @@ def review_candidates(video_dir: Path, fit_file: Path, labels_file: Path | None,
               help="Anchor the recap end pin at the farthest point reached (the ride "
               "apex/turnaround) instead of where the ride ended. Use when you trained "
               "or drove home from a different town than the real destination.")
+@_grade_options
 def compose_selected(selections_file: Path, video_dir: Path, fit_file: Path,
                      output_dir: Path | None, offset: float, no_auto_sync: bool,
                      layout: str, preview: bool, trim: float,
                      origin: str | None, destination: str | None, subtitle: str | None,
                      road: str | None, crew: str | None, lockup: str | None,
-                     far_pin: bool = False):
+                     far_pin: bool = False,
+                     grade_look: str = "none", grade_strength: int = 35,
+                     grade_wb: str = "off"):
     """Compose a highlight video from hand-picked candidate selections.
 
     SELECTIONS_FILE: moments.json or selected_candidates.json
@@ -867,6 +914,8 @@ def compose_selected(selections_file: Path, video_dir: Path, fit_file: Path,
             origin=fields["origin"], destination=fields["destination"],
             subtitle=fields["subtitle"], road=fields["road"],
             crew=fields["crew"], lockup=lockup, far_pin=far_pin,
+            grade_look=grade_look, grade_strength=grade_strength / 100,
+            grade_wb=grade_wb,
         )
     click.echo(f"\nDone! {result}")
 

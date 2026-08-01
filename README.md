@@ -248,6 +248,36 @@ This is basically coaching a video intern by showing them the cuts you didn't li
 
 ---
 
+## Color grading (optional)
+
+Off by default — the reel ships as-shot unless you opt in. If you lock white
+balance on the camera (e.g. 5500K on a GoPro — the right way to shoot for a
+graded cut), the pipeline can do the balancing afterward, per shot:
+
+```bash
+ride-recap process <date-folder> --wb shot                     # correction only
+ride-recap process <date-folder> --wb shot --look house        # + a shared look
+ride-recap compose-selected <sel> <dir> <fit> --wb shot --look warm-afternoon --look-strength 50
+```
+
+`--wb shot` measures each selected clip around its anchor (median of three
+frames) and neutralises it: a gentle levels stretch, white balance measured on
+near-neutral pixels only (asphalt, concrete, cloud — not a wall of canopy),
+and an exposure nudge applied as midtone gamma so highlights never clip. Light
+changes over a multi-hour ride, so the correction is per-shot — there is no
+single grade that fits hour 1 and hour 4.
+
+`--look` layers one shared creative recipe over every clip (`house`,
+`warm-afternoon`, `cool-morning`, `soft-film`, `overcast-lift`), scaled by
+`--look-strength`. Looks live in `grade.py` as small dicts — add your own.
+They lean on vibrance over saturation and pull highlights down rather than
+exposure up, because a blown sky is the one thing this footage cannot recover.
+
+The grade is applied to the footage *before* the HUD composites, so the
+overlay's white-with-black-stroke stays untouched.
+
+---
+
 ## Commands
 
 ```bash
@@ -281,6 +311,7 @@ src/gopro_garmin_pipeline/
   models/             # Gemini, OpenAI, and local OpenAI-compatible adapters
   composer.py         # Candidate generation, fusion, selection, composition
   burn_overlay.py     # The 5-element HUD, landscape + portrait
+  grade.py            # Optional per-shot correction + shared looks (--wb / --look)
   intro_outro.py      # Blur→title opener, outro recap card
   route_metadata.py   # Start / Far / Road from GPS via OSM + Overpass
   highlights.py       # Telemetry spike detection
