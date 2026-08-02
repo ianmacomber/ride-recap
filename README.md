@@ -269,14 +269,40 @@ and an exposure nudge applied as midtone gamma so highlights never clip. Light
 changes over a multi-hour ride, so the correction is per-shot — there is no
 single grade that fits hour 1 and hour 4.
 
+Which is easier to believe when you watch it disagree with itself:
+
+![Per-shot correction on three shots from the same ride](assets/images/grade-correction.jpg)
+
+Three shots, three hours apart, three different answers. The morning frame gets
+warmed and pulled *down*; the canopy frame gets lifted and has its green cast
+pulled out — both white-balance gains pinned at the ±7% clamp, which is the
+clamp doing exactly the job the comment in `grade.py` says it does; the
+afternoon frame gets cooled and pulled down hardest. The exposure nudges alone
+span 0.74 EV. Any single ride-wide grade has to be wrong for two of these.
+
 `--look` layers one shared creative recipe over every clip (`house`,
 `warm-afternoon`, `cool-morning`, `soft-film`, `overcast-lift`), scaled by
 `--look-strength`. Looks live in `grade.py` as small dicts — add your own.
 They lean on vibrance over saturation and pull highlights down rather than
 exposure up, because a blown sky is the one thing this footage cannot recover.
 
+![The five looks on one frame](assets/images/grade-looks.jpg)
+
+`--look-strength` is the dial that matters more than the recipe. Past roughly
+50 it stops reading as a grade and starts reading as a filter, which is why the
+default is a conservative 35:
+
+![One look from 0 to 100 strength](assets/images/grade-strength.jpg)
+
 The grade is applied to the footage *before* the HUD composites, so the
 overlay's white-with-black-stroke stays untouched.
+
+Every frame above is a real frame from the [sample ride](samples/), graded by
+the same `measure_shot` → `build_filter` path `process` uses — no mockups, and
+the measured numbers are printed under each pair so you can check them. Pull
+the video from Hugging Face and `python tools/make_grade_figures.py <dir>`
+rebuilds all three, so if you change a look in `grade.py` the README stops
+lying about it.
 
 ---
 
