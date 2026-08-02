@@ -235,6 +235,8 @@ Prompts are immutable and versioned: never edit v10, write v11. The version stri
 
 **`src/gopro_garmin_pipeline/design/tokens.json`** owns the design: colors, fonts, and the lockup defaults. Rebrand there, not in the drawing code.
 
+**`src/gopro_garmin_pipeline/intro_styles.py`** owns the first two seconds. The reel opens on a title card while the footage resolves out of a `signal` reveal — a per-block mosaic and an RGB split converging into register. Four others ship (`mosaic`, `scan`, `punch`, and the original `blur`); swap with `--intro-style`, or add your own as one entry in the registry. The reveal length is deliberately separate from the title-card window: the lockup can hold as long as you like over *sharp* footage, but obscured footage past ~2s is where viewers swipe.
+
 If you want to teach it your taste systematically: label a ride, scan it, diff your ratings against the model's, change the prompt.
 
 ```bash
@@ -312,7 +314,8 @@ src/gopro_garmin_pipeline/
   composer.py         # Candidate generation, fusion, selection, composition
   burn_overlay.py     # The 5-element HUD, landscape + portrait
   grade.py            # Optional per-shot correction + shared looks (--wb / --look)
-  intro_outro.py      # Blur→title opener, outro recap card
+  intro_outro.py      # Opening title card, outro recap card
+  intro_styles.py     # Opening reveal treatments (signal / mosaic / scan / …)
   route_metadata.py   # Start / Far / Road from GPS via OSM + Overpass
   highlights.py       # Telemetry spike detection
   strava.py           # Segment efforts + star counts

@@ -37,6 +37,7 @@ from .design.tokens import (
     LABEL_TRACKING_RATIO, default_lockup,
 )
 
+from . import intro_styles
 from .fit_parser import RideData, RidePoint, parse_fit
 from .gopro_meta import GoProClip, extract_metadata
 from .sync import auto_sync
@@ -1037,6 +1038,8 @@ def burn_overlay(
     portrait_crop_bias: float = 0.0,
     lockup: str | None = None,
     intro_secs: float = 0.0,
+    intro_style: str = intro_styles.DEFAULT_STYLE,
+    intro_reveal_secs: float = 0.0,
     grade: str = "",
 ) -> Path:
     """Burn telemetry overlay onto video.
@@ -1138,17 +1141,14 @@ def burn_overlay(
         base = "[graded]"
 
     if intro_secs > 0:
-        # Blur→clear: crossfade a gaussian-blurred copy into the sharp copy
-        # over the first `intro_secs` seconds using the frame timestamp T.
-        # blend inputs: A = blurred (first), B = sharp (second); clip(T/dur)
-        # ramps 0→1 so output goes blur→sharp, then stays sharp.
-        sigma = max(20.0, out_h / 54.0)  # ~40 at 2160p
-        filters.append(f"{base}split=2[isharp][iblur]")
-        filters.append(f"[iblur]gblur=sigma={sigma:.0f}[iblurred]")
-        filters.append(
-            f"[iblurred][isharp]blend=all_expr="
-            f"'A*(1-clip(T/{intro_secs:.3f},0,1))+B*clip(T/{intro_secs:.3f},0,1)'"
-            f"[introbase]"
+        # Opening reveal. The footage resolves over `reveal`, which is
+        # decoupled from intro_secs: the title lockup can hold for the full
+        # intro window, but obscured footage past ~2s is where viewers swipe.
+        reveal = intro_reveal_secs if intro_reveal_secs > 0 else \
+            intro_styles.default_reveal(intro_style, intro_secs)
+        filters += intro_styles.build_intro_filter(
+            intro_style, base, "[introbase]",
+            secs=reveal, width=out_w, height=out_h, fps=clip.fps,
         )
         base = "[introbase]"
 
