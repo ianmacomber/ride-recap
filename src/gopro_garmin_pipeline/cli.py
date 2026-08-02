@@ -43,6 +43,28 @@ def _grade_options(fn):
     return fn
 
 
+def _intro_options(fn):
+    """Shared opening-reveal flags for process / compose / compose-selected.
+
+    These mirror `burn`'s --intro-style / --intro-reveal. Without them the
+    reel-producing commands are pinned to ComposerConfig's defaults, which is
+    every path the README actually tells people to run.
+    """
+    fn = click.option(
+        "--intro-reveal", "intro_reveal_secs", default=0.0, type=float,
+        help="Seconds for the opening footage to resolve. 0 = the style's "
+             "own default.",
+    )(fn)
+    fn = click.option(
+        "--intro-style", default=intro_styles.DEFAULT_STYLE,
+        type=click.Choice(intro_styles.STYLES),
+        help="How the footage resolves under the opening title card: "
+             + "; ".join(f"{name} — {intro_styles.describe(name)}"
+                         for name in intro_styles.STYLES),
+    )(fn)
+    return fn
+
+
 _CREW_CACHE_PATH = Path.home() / ".ride_recap_cache" / "last_crew.txt"
 
 
@@ -414,6 +436,7 @@ def burn(video_path: Path, fit_file: Path, output: Path | None, offset: float,
               help="Full in-segment bottom-band string. Overrides origin/road for "
               "the per-clip HUD only; recap card still uses --origin/--road/--crew.")
 @_grade_options
+@_intro_options
 def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_dir: Path | None,
             offset: float, no_auto_sync: bool,
             landscape_duration: float, portrait_duration: float,
@@ -422,6 +445,8 @@ def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_di
             preview: bool, skip_gemini: bool, skip_narrative: bool, no_upload: bool,
             origin: str | None, destination: str | None, subtitle: str | None,
             road: str | None, crew: str | None, lockup: str | None,
+            intro_style: str = intro_styles.DEFAULT_STYLE,
+            intro_reveal_secs: float = 0.0,
             grade_look: str = "none", grade_strength: int = 35,
             grade_wb: str = "off"):
     """Compose highlight videos from ride telemetry + optional labels.
@@ -481,6 +506,8 @@ def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_di
         road=fields["road"],
         crew=fields["crew"],
         lockup=lockup,
+        intro_style=intro_style,
+        intro_reveal_secs=intro_reveal_secs,
         grade_look=grade_look,
         grade_strength=grade_strength / 100,
         grade_wb=grade_wb,
@@ -542,6 +569,7 @@ def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_di
               "apex/turnaround) instead of where the ride ended. Use when you trained "
               "or drove home from a different town than the real destination.")
 @_grade_options
+@_intro_options
 def process(date_folder: Path, offset: float, no_auto_sync: bool,
             strava_activity: int | None,
             landscape_duration: float, portrait_duration: float,
@@ -550,6 +578,8 @@ def process(date_folder: Path, offset: float, no_auto_sync: bool,
             origin: str | None, destination: str | None, subtitle: str | None,
             road: str | None, crew: str | None, lockup: str | None,
             far_pin: bool = False,
+            intro_style: str = intro_styles.DEFAULT_STYLE,
+            intro_reveal_secs: float = 0.0,
             grade_look: str = "none", grade_strength: int = 35,
             grade_wb: str = "off"):
     """Full pipeline: detect → review → compose highlight videos.
@@ -606,6 +636,7 @@ def process(date_folder: Path, offset: float, no_auto_sync: bool,
             origin=fields["origin"], destination=fields["destination"],
             subtitle=fields["subtitle"], road=fields["road"],
             crew=fields["crew"], lockup=lockup, far_pin=far_pin,
+            intro_style=intro_style, intro_reveal_secs=intro_reveal_secs,
             grade_look=grade_look, grade_strength=grade_strength,
             grade_wb=grade_wb,
         )
@@ -621,6 +652,8 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
                   subtitle: str | None = None, road: str | None = None,
                   crew: str | None = None, lockup: str | None = None,
                   far_pin: bool = False,
+                  intro_style: str = intro_styles.DEFAULT_STYLE,
+                  intro_reveal_secs: float = 0.0,
                   grade_look: str = "none", grade_strength: int = 35,
                   grade_wb: str = "off"):
     """Body of `process` — extracted so caffeinate wraps the whole run."""
@@ -676,6 +709,8 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
         crew=crew,
         lockup=lockup,
         far_pin=far_pin,
+        intro_style=intro_style,
+        intro_reveal_secs=intro_reveal_secs,
         grade_look=grade_look,
         grade_strength=grade_strength / 100,
         grade_wb=grade_wb,
@@ -876,12 +911,15 @@ def review_candidates(video_dir: Path, fit_file: Path, labels_file: Path | None,
               "apex/turnaround) instead of where the ride ended. Use when you trained "
               "or drove home from a different town than the real destination.")
 @_grade_options
+@_intro_options
 def compose_selected(selections_file: Path, video_dir: Path, fit_file: Path,
                      output_dir: Path | None, offset: float, no_auto_sync: bool,
                      layout: str, preview: bool, trim: float,
                      origin: str | None, destination: str | None, subtitle: str | None,
                      road: str | None, crew: str | None, lockup: str | None,
                      far_pin: bool = False,
+                     intro_style: str = intro_styles.DEFAULT_STYLE,
+                     intro_reveal_secs: float = 0.0,
                      grade_look: str = "none", grade_strength: int = 35,
                      grade_wb: str = "off"):
     """Compose a highlight video from hand-picked candidate selections.
@@ -921,6 +959,7 @@ def compose_selected(selections_file: Path, video_dir: Path, fit_file: Path,
             origin=fields["origin"], destination=fields["destination"],
             subtitle=fields["subtitle"], road=fields["road"],
             crew=fields["crew"], lockup=lockup, far_pin=far_pin,
+            intro_style=intro_style, intro_reveal_secs=intro_reveal_secs,
             grade_look=grade_look, grade_strength=grade_strength / 100,
             grade_wb=grade_wb,
         )
