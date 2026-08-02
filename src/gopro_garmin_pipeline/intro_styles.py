@@ -342,7 +342,24 @@ def _signal(src: str, dst: str, secs: float, g: Geom) -> list[str]:
             f"noise=alls={rng.randint(14, 30)}:allf=t"
             f":enable='between(t,{t0:.3f},{t0 + rng.uniform(0.03, 0.08):.3f})'"
         )
-    chains.append("[sgmosaic]" + ",".join(parts) + dst)
+    # rgbashift only accepts RGB, so leaving it inline costs a
+    # yuv420p→gbrp→yuv420p round-trip on EVERY frame of the clip — `enable=`
+    # gates the filter, not the format conversion swscale negotiates around
+    # it. That is permanent 4:2:0 chroma loss (measured: post-reveal PSNR
+    # u:41 v:39 against the source, versus `inf` for every other style), and
+    # since the intro only runs on segment 0 it shows up as a visible quality
+    # step at the first cut.
+    #
+    # So the effect runs on its own branch, `trim`med to the reveal window,
+    # and is overlaid back. eof_action=pass hands the clean branch straight
+    # through once the trimmed branch ends: after the reveal the graph is a
+    # genuine no-op, and the RGB conversion only ever touches reveal frames.
+    chains.append("[sgmosaic]split=2[sgclean][sgfx]")
+    chains.append(
+        f"[sgfx]trim=end={secs:.3f},setpts=PTS-STARTPTS,"
+        + ",".join(parts) + ",format=yuva420p[sgfxo]"
+    )
+    chains.append(f"[sgclean][sgfxo]overlay=0:0:eof_action=pass:format=auto{dst}")
     return chains
 
 
