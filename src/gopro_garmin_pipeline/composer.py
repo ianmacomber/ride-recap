@@ -204,6 +204,12 @@ class ComposerConfig:
     # then train/drive home from a different town.
     far_pin: bool = False
 
+    # Colour grade (see grade.py). The defaults leave footage untouched, so
+    # grading is strictly opt-in.
+    grade_look: str = "none"
+    grade_strength: float = 0.35
+    grade_wb: str = "off"  # "shot" | "off"
+
     @property
     def pad_before(self) -> float:
         """Seconds before the candidate midpoint — 50% of segment duration."""
@@ -1571,6 +1577,47 @@ def _version_stamp(video_dir: Path) -> str:
     return f"{video_dir.name.replace('-', '')}_{datetime.now().strftime('%H%M%S')}"
 
 
+def build_segment_grades(
+    shots: list[tuple[str, float]],
+    video_dir: Path,
+    look: str,
+    strength: float,
+    wb: str,
+) -> dict[int, str]:
+    """Measure every shot's balance once and return {index: ffmpeg filter chain}.
+
+    `shots` is [(clip_name, anchor_video_secs), ...] — the two paths into the
+    burn carry segments as objects and as dicts, so this takes the flattened
+    form both can produce.
+
+    Measurement samples a few frames around each segment's anchor, so this
+    costs a handful of cheap ffmpeg seeks per clip in the cut rather than
+    anything per-frame.
+
+    Returns an empty dict when grading is off, which the burn loop reads as
+    "pass no filter".
+    """
+    from .grade import build_filter, measure_shot
+
+    if look == "none" and wb == "off":
+        return {}
+
+    balances: dict[int, object] = {}
+    if wb == "shot":
+        print(f"\nMeasuring shot balance for {len(shots)} segments...")
+        for i, (clip_name, anchor) in enumerate(shots):
+            balances[i] = measure_shot(video_dir / clip_name, anchor)
+
+    grades = {
+        i: build_filter(balances.get(i), look=look, strength=strength)
+        for i in range(len(shots))
+    }
+    active = sum(1 for v in grades.values() if v)
+    print(f"  Grade: look={look} @ {strength:.0%}, wb={wb} "
+          f"({active}/{len(shots)} segments)")
+    return grades
+
+
 def compose_from_selections(
     selections_path: Path,
     video_dir: Path,
@@ -1592,6 +1639,9 @@ def compose_from_selections(
     subtitle: str | None = None,
     lockup: str | None = None,
     far_pin: bool = False,
+    grade_look: str = "none",
+    grade_strength: float = 0.35,
+    grade_wb: str = "off",
 ) -> Path:
     """Compose a highlight video from a selections file.
 
@@ -1658,6 +1708,13 @@ def compose_from_selections(
     adjusted_clips = extract_all(video_dir)
     clip_by_name = {c.path.name: c for c in adjusted_clips}
 
+    grades = build_segment_grades(
+        [(s["clip_name"],
+          s.get("anchor_video_secs") or (s["video_start"] + s["video_end"]) / 2)
+         for s in segments],
+        video_dir, grade_look, grade_strength, grade_wb,
+    )
+
     clips = []
     for i, seg in enumerate(segments):
         notes = seg.get("notes", "")[:60]
@@ -1720,6 +1777,7 @@ def compose_from_selections(
             encode_preset=encode_preset,
             portrait_crop_bias=float(seg.get("portrait_crop_bias", 0.0)),
             intro_secs=seg_intro,
+            grade=grades.get(i, ""),
         )
         clips.append(out)
 
@@ -2034,6 +2092,11 @@ def compose_highlight(
         outro_extra = (
             config.outro_lead_in_secs if config.include_outro else 0.0
         )
+        grades = build_segment_grades(
+            [(s.clip_name, s.anchor_video_secs or (s.video_start + s.video_end) / 2)
+             for s in segs],
+            video_dir, config.grade_look, config.grade_strength, config.grade_wb,
+        )
         for i, seg in enumerate(segs):
             print(f"\n[{i+1}/{len(segs)}] {seg.label.get('notes', '')[:60]}")
             source = video_dir / seg.clip_name
@@ -2078,6 +2141,7 @@ def compose_highlight(
                 encode_preset=encode_preset,
                 portrait_crop_bias=seg.portrait_crop_bias,
                 intro_secs=intro_secs,
+                grade=grades.get(i, ""),
             )
             burned.append(out)
         return burned
