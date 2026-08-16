@@ -847,8 +847,11 @@ class OverlayRenderer:
         if self._intro_origin is None:
             self._intro_origin = video_secs
             local = self._local_wall(video_secs)
-            # %-I / %-M strip the leading zero (POSIX). "3:06 PM".
-            self._intro_time_str = local.strftime("%-I:%M %p")
+            # Windows does not support the POSIX %-I / %-M strftime flags,
+            # so format the hour/minute explicitly to keep the timestamp
+            # readable as "3:06 PM" instead of "03:06 PM".
+            hour_12 = local.hour % 12 or 12
+            self._intro_time_str = f"{hour_12}:{local.minute:02d} {local.strftime('%p')}"
             self._intro_date_str = local.strftime("%b %d, %Y").upper()
         rel = video_secs - self._intro_origin
         if rel >= self.intro_secs:
