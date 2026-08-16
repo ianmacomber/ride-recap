@@ -23,6 +23,7 @@ import datetime as dt
 import io
 import math
 import subprocess
+import sys
 import urllib.request
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -963,7 +964,9 @@ ENCODE_MASTER = "master"
 def _encode_args(preset: str) -> list[str]:
     """Return ffmpeg encoding arguments for the given preset.
 
-    preview: VideoToolbox hardware encoder, fast, larger files.
+    preview: a fast default that stays compatible with the current OS. On macOS
+    the native VideoToolbox encoder is available, but Windows/Linux must use a
+    cross-platform encoder such as libx264 or ffmpeg rejects the command.
     master:  libx264 software encoder, high quality, +faststart for web.
     """
     if preset == ENCODE_MASTER:
@@ -973,10 +976,16 @@ def _encode_args(preset: str) -> list[str]:
             "-pix_fmt", "yuv420p",
             "-movflags", "+faststart",
         ]
-    # Default: preview (fast hardware encode)
+    if sys.platform.startswith("darwin"):
+        return [
+            "-c:v", "h264_videotoolbox", "-q:v", "65",
+            "-c:a", "copy", "-pix_fmt", "yuv420p",
+        ]
     return [
-        "-c:v", "h264_videotoolbox", "-q:v", "65",
-        "-c:a", "copy", "-pix_fmt", "yuv420p",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+        "-c:a", "aac", "-b:a", "192k",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
     ]
 
 

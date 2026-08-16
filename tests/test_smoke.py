@@ -8,14 +8,25 @@ classifier. Everything here runs in well under a second.
 from __future__ import annotations
 
 import math
+import sys
 
 import pytest
 
+from gopro_garmin_pipeline.burn_overlay import ENCODE_PREVIEW, _encode_args
 from gopro_garmin_pipeline.config import Settings
 from gopro_garmin_pipeline.design import tokens as T
 from gopro_garmin_pipeline import route_metadata as rm
 from gopro_garmin_pipeline import prompt_eval as pe
 from gopro_garmin_pipeline.utils import rating_visual_action
+
+
+# ─── FFmpeg encoders ─────────────────────────────────────────
+
+def test_preview_encode_args_use_compatible_encoder():
+    args = _encode_args(ENCODE_PREVIEW)
+    assert "libx264" in args
+    assert "h264_videotoolbox" not in args
+    assert sys.platform.startswith("win") or "libx264" in args
 
 
 # ─── Config ───────────────────────────────────────────────────
