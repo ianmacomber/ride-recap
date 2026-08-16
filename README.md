@@ -359,7 +359,7 @@ tests/                # Smoke tests
 ## Caveats
 
 * **Built for one setup**: GoPro Hero 13 + Garmin Edge 540 + road cycling. Other cameras and head units should work (GPMF sync reads the standard telemetry track), but are untested.
-* **I only tested on macOS**: should work for Linux but I haven't tested yet.
+* **I only tested on macOS**: should work for Windows and Linux but I haven't fully tested yet.
 * **The learned ranker is WIP.** `learned_ranker.py` logs training data on every compose and will fit a logistic regression at ~100 examples. I never reached the threshold before the feature schema went stale. It's honest to call it unfinished.
 * Video and FIT files are gitignored.
 
