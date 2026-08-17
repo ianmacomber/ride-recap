@@ -23,6 +23,7 @@ import datetime as dt
 import io
 import math
 import subprocess
+import sys
 import urllib.request
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -847,8 +848,11 @@ class OverlayRenderer:
         if self._intro_origin is None:
             self._intro_origin = video_secs
             local = self._local_wall(video_secs)
-            # %-I / %-M strip the leading zero (POSIX). "3:06 PM".
-            self._intro_time_str = local.strftime("%-I:%M %p")
+            # Windows does not support the POSIX %-I / %-M strftime flags,
+            # so format the hour/minute explicitly to keep the timestamp
+            # readable as "3:06 PM" instead of "03:06 PM".
+            hour_12 = local.hour % 12 or 12
+            self._intro_time_str = f"{hour_12}:{local.minute:02d} {local.strftime('%p')}"
             self._intro_date_str = local.strftime("%b %d, %Y").upper()
         rel = video_secs - self._intro_origin
         if rel >= self.intro_secs:
@@ -960,7 +964,9 @@ ENCODE_MASTER = "master"
 def _encode_args(preset: str) -> list[str]:
     """Return ffmpeg encoding arguments for the given preset.
 
-    preview: VideoToolbox hardware encoder, fast, larger files.
+    preview: a fast default that stays compatible with the current OS. On macOS
+    the native VideoToolbox encoder is available, but Windows/Linux must use a
+    cross-platform encoder such as libx264 or ffmpeg rejects the command.
     master:  libx264 software encoder, high quality, +faststart for web.
     """
     if preset == ENCODE_MASTER:
@@ -970,10 +976,16 @@ def _encode_args(preset: str) -> list[str]:
             "-pix_fmt", "yuv420p",
             "-movflags", "+faststart",
         ]
-    # Default: preview (fast hardware encode)
+    if sys.platform.startswith("darwin"):
+        return [
+            "-c:v", "h264_videotoolbox", "-q:v", "65",
+            "-c:a", "copy", "-pix_fmt", "yuv420p",
+        ]
     return [
-        "-c:v", "h264_videotoolbox", "-q:v", "65",
-        "-c:a", "copy", "-pix_fmt", "yuv420p",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+        "-c:a", "aac", "-b:a", "192k",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
     ]
 
 

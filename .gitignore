@@ -28,6 +28,8 @@ src/gopro_garmin_pipeline/design/proposals/
 .local_cache/
 moments.json
 ride_labels.json
+.vscode
+.streamlit/
 
 # The published sample ride is the exception: its sidecars are committed so
 # the labels and baseline ratings are readable without downloading video.

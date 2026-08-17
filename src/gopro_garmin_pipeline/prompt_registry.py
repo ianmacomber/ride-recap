@@ -30,7 +30,7 @@ def _prompt_path(name: str, version: str) -> Path:
 def load_prompt(name: str, version: str) -> tuple[dict, str]:
     """Return (metadata, body) for a named, versioned prompt."""
     path = _prompt_path(name, version)
-    raw = path.read_text()
+    raw = path.read_text(encoding='utf-8')
     if not raw.startswith(_FM_DELIM):
         raise ValueError(f"{path}: missing TOML frontmatter (+++)")
     _, fm, body = raw.split(_FM_DELIM, 2)
