@@ -24,10 +24,12 @@ from gopro_garmin_pipeline.utils import rating_visual_action
 
 def test_preview_encode_args_use_compatible_encoder():
     args = _encode_args(ENCODE_PREVIEW)
-    assert "libx264" in args
-    assert "h264_videotoolbox" not in args
-    assert sys.platform.startswith("win") or "libx264" in args
-
+    if sys.platform.startswith("darwin"):
+        assert "h264_videotoolbox" in args
+        assert "libx264" not in args
+    else:
+        assert "libx264" in args
+        assert "h264_videotoolbox" not in args
 
 # ─── Config ───────────────────────────────────────────────────
 
