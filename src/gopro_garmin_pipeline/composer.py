@@ -167,6 +167,8 @@ class ComposerConfig:
     portrait_duration: float = 30.0
     segment_duration: float = 3.0
     offset: float = 0.0
+    ride_timezone: str | None = None
+    ride_timezone_explicit: bool = False
     # Optional per-clip offsets keyed by GoPro filename. When present,
     # the burning code looks up each clip's value here and falls back to
     # ``offset`` for unlisted clips. Fixes multi-recording rides where
@@ -349,15 +351,14 @@ def _candidates_from_short_clips(
     clip IS the highlight. Extracts a standard segment_duration window
     centered on the clip midpoint (same as all other candidate sources).
     """
-    from .sync import normalize_tz
-
     candidates = []
     for sc in synced_clips:
         clip = sc.clip
         mid_video = clip.duration_secs / 2
         mid_wall = clip.video_time_to_wall_time(mid_video)
         if ride.start_time:
-            mid_wall = normalize_tz(mid_wall, ride.start_time)
+            if mid_wall.tzinfo is not None:
+                mid_wall = mid_wall.astimezone(dt.timezone.utc).replace(tzinfo=None)
             ride_secs = (mid_wall - ride.start_time).total_seconds()
         else:
             ride_secs = 0
@@ -1069,7 +1070,6 @@ def _ride_time_to_video(
     each chapter has its own RTC drift.
     """
     import datetime as dt
-    from .sync import normalize_tz
 
     if not ride.start_time:
         return None, None
@@ -1078,7 +1078,9 @@ def _ride_time_to_video(
 
     for sc in synced_clips:
         clip = sc.clip
-        clip_start = normalize_tz(clip.creation_time, target_wall)
+        clip_start = clip.creation_time
+        if clip_start.tzinfo is not None:
+            clip_start = clip_start.astimezone(dt.timezone.utc).replace(tzinfo=None)
         clip_end = clip_start + dt.timedelta(seconds=clip.duration_secs)
 
         clip_offset = sc.offset_secs or offset
@@ -1838,7 +1840,13 @@ def generate_all_candidates(
 
     ride = parse_fit(fit_path)
     clips = extract_all(video_dir)
-    synced_clips = sync_all(clips, ride, config.offset, per_clip_offsets=config.per_clip_offsets)
+    synced_clips = sync_all(
+        clips,
+        ride,
+        config.offset,
+        per_clip_offsets=config.per_clip_offsets,
+        ride_timezone=config.ride_timezone,
+    )
     print(f"Loaded {len(ride.points)} FIT points, {len(synced_clips)} synced clips")
 
     # Optional: labels
@@ -1851,9 +1859,21 @@ def generate_all_candidates(
     strava_efforts = None
     if config.strava_activity_id:
         try:
-            from .strava import get_segment_efforts
+            from .strava import get_segment_efforts, get_activity_timezone
             strava_efforts = get_segment_efforts(config.strava_activity_id)
             print(f"  Strava: {len(strava_efforts)} segment efforts")
+            if not config.ride_timezone_explicit:
+                detected_tz = get_activity_timezone(config.strava_activity_id)
+                if detected_tz:
+                    print(f"  Detected timezone from activity location: {detected_tz}")
+                    config.ride_timezone = detected_tz
+                    synced_clips = sync_all(
+                        clips,
+                        ride,
+                        config.offset,
+                        per_clip_offsets=config.per_clip_offsets,
+                        ride_timezone=config.ride_timezone,
+                    )
         except Exception as exc:
             print(f"  Warning: couldn't fetch Strava data: {exc}")
 

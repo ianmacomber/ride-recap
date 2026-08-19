@@ -7,6 +7,7 @@ classifier. Everything here runs in well under a second.
 
 from __future__ import annotations
 
+import datetime as dt
 import math
 import sys
 
@@ -18,6 +19,34 @@ from gopro_garmin_pipeline.design import tokens as T
 from gopro_garmin_pipeline import route_metadata as rm
 from gopro_garmin_pipeline import prompt_eval as pe
 from gopro_garmin_pipeline.utils import rating_visual_action
+
+
+# ─── FIT and GoPro sync ─────────────────────────────────────
+
+def test_naive_fit_timestamps_sync_as_utc():
+    """Regression: FIT timestamps are naive UTC values from Garmin/Strava."""
+    from gopro_garmin_pipeline.fit_parser import RideData, RidePoint
+    from gopro_garmin_pipeline.gopro_meta import GoProClip
+    from gopro_garmin_pipeline.sync import auto_sync
+    from pathlib import Path
+
+    # FIT: naive UTC timestamp (as parsed from FIT file)
+    fit_ts = dt.datetime(2026, 8, 16, 11, 38, 21)
+    ride = RideData(points=[RidePoint(timestamp=fit_ts, speed=5.0)], start_time=fit_ts)
+
+    # GoPro: UTC timestamp from ffprobe
+    gopo_creation = dt.datetime(2026, 8, 16, 7, 41, 0, tzinfo=dt.timezone.utc)
+    clip = GoProClip(
+        path=Path("test.mp4"),
+        creation_time=gopo_creation,
+        duration_secs=60.0,
+        width=1920, height=1080, fps=30.0
+    )
+
+    synced = auto_sync(clip, ride, offset_secs=0.0)
+    # Without a clock correction, the adjusted time remains naive UTC.
+    adjusted = synced._adjust(0.0)
+    assert adjusted == dt.datetime(2026, 8, 16, 7, 41, 0)
 
 
 # ─── FFmpeg encoders ─────────────────────────────────────────

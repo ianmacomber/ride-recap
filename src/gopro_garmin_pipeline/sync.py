@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import datetime as dt
 from dataclasses import dataclass
+from zoneinfo import ZoneInfo
 
 from .fit_parser import RideData, RidePoint
 from .gopro_meta import GoProClip
 
+
+def get_ride_timezone(timezone_name: str | None = None) -> ZoneInfo:
+    """Return the configured ride timezone, with a backward-compatible default."""
+    return ZoneInfo(timezone_name or "America/New_York")
 
 def normalize_tz(a: dt.datetime, ref: dt.datetime) -> dt.datetime:
     """Strip or attach timezone info on *a* so it matches *ref*.
@@ -30,11 +35,20 @@ class SyncedClip:
     clip: GoProClip
     ride: RideData
     offset_secs: float  # added to video time to get FIT time
+    ride_timezone: ZoneInfo | None = None
 
     def _adjust(self, video_secs: float) -> dt.datetime:
-        """Convert video time to FIT-aligned wall time with tz normalization."""
+        """Convert video time to FIT-aligned wall time.
+
+        Video time is measured in seconds from creation_time. We apply the
+        offset to align to FIT time. FIT timestamps are naive UTC, so the
+        lookup value strips tzinfo without any zone conversion.
+        """
         wall = self.clip.video_time_to_wall_time(video_secs)
         adjusted = wall + dt.timedelta(seconds=self.offset_secs)
+        if adjusted.tzinfo is not None:
+            adjusted = adjusted.astimezone(dt.timezone.utc)
+        adjusted = adjusted.replace(tzinfo=None)
         if self.ride.start_time:
             adjusted = normalize_tz(adjusted, self.ride.start_time)
         return adjusted
@@ -52,7 +66,12 @@ class SyncedClip:
         )
 
 
-def auto_sync(clip: GoProClip, ride: RideData, offset_secs: float = 0.0) -> SyncedClip:
+def auto_sync(
+    clip: GoProClip,
+    ride: RideData,
+    offset_secs: float = 0.0,
+    ride_timezone: str | None = None,
+) -> SyncedClip:
     """Create a synced clip with a manual time offset.
 
     Both the GoPro and Garmin Edge 540 use GPS time, so they should be
@@ -67,7 +86,12 @@ def auto_sync(clip: GoProClip, ride: RideData, offset_secs: float = 0.0) -> Sync
     Returns:
         SyncedClip ready for overlay rendering.
     """
-    return SyncedClip(clip=clip, ride=ride, offset_secs=offset_secs)
+    return SyncedClip(
+        clip=clip,
+        ride=ride,
+        offset_secs=offset_secs,
+        ride_timezone=get_ride_timezone(ride_timezone),
+    )
 
 
 def sync_all(
@@ -75,6 +99,7 @@ def sync_all(
     ride: RideData,
     offset_secs: float = 0.0,
     per_clip_offsets: dict[str, float] | None = None,
+    ride_timezone: str | None = None,
 ) -> list[SyncedClip]:
     """Sync multiple GoPro clips to a single ride.
 
@@ -85,6 +110,8 @@ def sync_all(
     """
     per_clip = per_clip_offsets or {}
     return [
-        auto_sync(clip, ride, per_clip.get(clip.path.name, offset_secs))
+        auto_sync(
+            clip, ride, per_clip.get(clip.path.name, offset_secs), ride_timezone
+        )
         for clip in clips
     ]

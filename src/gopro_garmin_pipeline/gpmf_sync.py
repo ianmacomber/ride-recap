@@ -36,6 +36,36 @@ _GPS9_ROW_BYTES = 32
 _GPS_EPOCH = dt.datetime(2000, 1, 1, tzinfo=dt.timezone.utc)
 
 
+def _timestamp_fallback_offset(ride_dir: Path) -> float | None:
+    """Estimate FIT-vs-GoPro offset from timestamps when GPMF is unreadable.
+
+    FIT timestamps are naive UTC, so this compares them directly against
+    the earliest GoPro clip's (UTC-aware) creation_time. Clips under 30s
+    are excluded from the "earliest" pick — short accidental test/junk
+    recordings before the real ride start are common and, being earliest,
+    would otherwise anchor the whole ride's offset to the wrong moment.
+    """
+    try:
+        from .fit_parser import parse_fit
+        from .gopro_meta import extract_metadata
+
+        fit_paths = sorted(ride_dir.glob("*.fit")) + sorted(ride_dir.glob("*.FIT"))
+        video_paths = sorted(ride_dir.glob("*.MP4")) + sorted(ride_dir.glob("*.mp4"))
+        if not fit_paths or not video_paths:
+            return None
+
+        ride = parse_fit(fit_paths[0])
+        if ride.start_time is None:
+            return None
+        clips = [extract_metadata(path) for path in video_paths]
+        candidates = [c for c in clips if c.duration_secs >= 30.0] or clips
+        first_clip = min(candidates, key=lambda clip: clip.creation_time)
+        ride_start = ride.start_time.replace(tzinfo=dt.timezone.utc)
+        return (ride_start - first_clip.creation_time.astimezone(dt.timezone.utc)).total_seconds()
+    except Exception:
+        return None
+
+
 # ─── GPMF extraction ──────────────────────────────────────────────
 
 def _find_gpmd_stream(video_path: Path) -> int | None:
@@ -410,6 +440,10 @@ def resolve_offsets(
             f"auto-detected ({report.method}, "
             f"conf={report.confidence:.2f})"
         )
+
+    fallback = _timestamp_fallback_offset(ride_dir)
+    if fallback is not None:
+        return {}, fallback, "timestamp fallback (FIT start vs GoPro creation)"
 
     return {}, 0.0, f"auto-sync failed: {report.notes}"
 

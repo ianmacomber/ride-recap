@@ -22,6 +22,12 @@ from pathlib import Path
 
 from .config import get_settings
 
+try:
+    from timezonefinder import TimezoneFinder
+    _TZF = TimezoneFinder()
+except ImportError:
+    _TZF = None
+
 _API_BASE = "https://www.strava.com/api/v3"
 _TOKEN_URL = "https://www.strava.com/oauth/token"
 _AUTH_URL = "https://www.strava.com/oauth/authorize"
@@ -284,6 +290,22 @@ def get_segment_efforts(activity_id: int) -> list[SegmentEffort]:
         print(f"    {ts:>8}  {eff.star_count:>4} stars  {eff.name[:50]}")
 
     return efforts
+
+
+def get_activity_timezone(activity_id: int) -> str | None:
+    """Detect an activity timezone from its Strava start coordinates."""
+    if _TZF is None:
+        return None
+    try:
+        activity = get_activity(activity_id)
+        start_latlng = activity.get("start_latlng")
+        if start_latlng and len(start_latlng) >= 2:
+            return _TZF.timezone_at(
+                lat=float(start_latlng[0]), lng=float(start_latlng[1])
+            )
+    except Exception as exc:
+        print(f"  Warning: Could not detect timezone from activity {activity_id}: {exc}")
+    return None
 
 
 # ─── Star count cache (avoid re-fetching) ─────────────────────

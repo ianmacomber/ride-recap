@@ -28,7 +28,6 @@ import streamlit as st
 try:
     from .fit_parser import parse_fit
     from .gopro_meta import extract_all
-    from .sync import normalize_tz
     from .utils import (
         LABEL_SCALE_VERSION,
         M_TO_FT,
@@ -40,7 +39,6 @@ try:
 except ImportError:
     from gopro_garmin_pipeline.fit_parser import parse_fit
     from gopro_garmin_pipeline.gopro_meta import extract_all
-    from gopro_garmin_pipeline.sync import normalize_tz
     from gopro_garmin_pipeline.utils import (
         LABEL_SCALE_VERSION,
         M_TO_FT,
@@ -200,7 +198,8 @@ def _clips_on_timeline(ride_data: dict, clips_data: list[dict], offset: float) -
     mapped = []
     for clip in clips_data:
         clip_start_wall = dt.datetime.fromisoformat(clip["creation_time"])
-        clip_start_wall = normalize_tz(clip_start_wall, ride_start)
+        if clip_start_wall.tzinfo is not None:
+            clip_start_wall = clip_start_wall.astimezone(dt.timezone.utc).replace(tzinfo=None)
         elapsed_start = (clip_start_wall - ride_start).total_seconds() + offset
         elapsed_end = elapsed_start + clip["duration_secs"]
         if elapsed_end < 0 or elapsed_start > ride_duration:
