@@ -203,14 +203,13 @@ def get_segment(segment_id: int) -> dict:
 
 
 def get_segment_efforts(activity_id: int) -> list[SegmentEffort]:
-    """Get segment efforts for an activity using starred status.
+    """Get segment efforts for an activity, ranked by Strava's star_count.
 
-    Uses the `starred` boolean from the activity response (whether the
-    authenticated athlete starred the segment) as the popularity signal.
-    This requires only 1 API call — no per-segment fetches needed.
-
-    For starred segments, optionally enriches with star_count from cache
-    or a small number of detail fetches.
+    `starred` on the activity response only reflects whether the
+    authenticated athlete personally starred the segment — most riders
+    never do this, so it can't be used as the popularity signal. Instead,
+    star_count (total stars across all Strava users) is fetched per
+    segment, cached locally so repeat runs don't re-hit the API.
 
     Returns efforts sorted by start time.
     """
@@ -240,13 +239,15 @@ def get_segment_efforts(activity_id: int) -> list[SegmentEffort]:
         print(f"  {len(efforts_raw)} segment efforts, none starred — using all")
         source = efforts_raw
 
-    # Fetch star_count for starred segments (small number, usually <20)
+    # Fetch star_count (total stars across all Strava users) for every
+    # segment in this activity, using the local cache to avoid re-fetching
+    # segments seen on prior rides.
     star_cache = _load_star_cache()
-    starred_ids = {e["segment"]["id"] for e in source if e.get("segment", {}).get("starred")}
-    uncached = [sid for sid in starred_ids if sid not in star_cache]
+    segment_ids = {e["segment"]["id"] for e in source}
+    uncached = [sid for sid in segment_ids if sid not in star_cache]
 
     if uncached:
-        print(f"  Fetching star counts for {len(uncached)} starred segments...")
+        print(f"  Fetching star counts for {len(uncached)} segments...")
         for sid in uncached:
             try:
                 seg = get_segment(sid)
@@ -260,7 +261,6 @@ def get_segment_efforts(activity_id: int) -> list[SegmentEffort]:
     for e in source:
         seg = e["segment"]
         sid = seg["id"]
-        starred = seg.get("starred", False)
 
         # Compute start offset from activity start
         start_secs = 0.0
@@ -275,7 +275,7 @@ def get_segment_efforts(activity_id: int) -> list[SegmentEffort]:
             name=seg.get("name", f"Segment {sid}"),
             start_time_secs=start_secs,
             elapsed_time_secs=e.get("elapsed_time", 0),
-            star_count=star_cache.get(sid, 100 if starred else 0),
+            star_count=star_cache.get(sid, 0),
             distance_m=seg.get("distance", 0),
         )
         efforts.append(effort)
