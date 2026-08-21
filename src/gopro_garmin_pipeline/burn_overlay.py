@@ -24,6 +24,7 @@ import io
 import math
 import subprocess
 import sys
+import threading
 import urllib.request
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -1168,24 +1169,42 @@ def burn_overlay(
 
     # Encoding
     cmd += _encode_args(encode_preset)
+    cmd += ["-hide_banner", "-loglevel", "error", "-nostats"]
     cmd.append(str(output_path))
 
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 
-    for f in range(total_frames):
-        overlay = renderer.render_frame(start_offset + f / clip.fps)
-        proc.stdin.write(overlay.tobytes())
-        if (f + 1) % 30 == 0 or f == total_frames - 1:
-            print(f"\r  Frame {f + 1}/{total_frames} ({(f + 1) / total_frames * 100:.0f}%)",
-                  end="", flush=True)
+    # Drained on a thread: a full stderr pipe blocks ffmpeg, which then stops
+    # reading stdin and deadlocks the frame writes below.
+    stderr_chunks: list[bytes] = []
+    stderr_thread = threading.Thread(
+        target=lambda: stderr_chunks.append(proc.stderr.read()), daemon=True,
+    )
+    stderr_thread.start()
 
-    proc.stdin.close()
-    _, stderr = proc.communicate()
+    try:
+        for f in range(total_frames):
+            overlay = renderer.render_frame(start_offset + f / clip.fps)
+            proc.stdin.write(overlay.tobytes())
+            if (f + 1) % 30 == 0 or f == total_frames - 1:
+                print(f"\r  Frame {f + 1}/{total_frames} ({(f + 1) / total_frames * 100:.0f}%)",
+                      end="", flush=True)
+    except BrokenPipeError:
+        pass  # ffmpeg exited early; its stderr below explains why
+    finally:
+        try:
+            proc.stdin.close()
+        except BrokenPipeError:
+            pass
+
+    proc.wait()
+    stderr_thread.join()
+    stderr = b"".join(c for c in stderr_chunks if c)
     print()
 
     if proc.returncode != 0:
-        print(f"FFmpeg error:\n{stderr.decode()[-500:]}")
+        print(f"FFmpeg error:\n{stderr.decode(errors='replace')[-500:]}")
         raise RuntimeError("FFmpeg failed")
 
     print(f"Output: {output_path} ({output_path.stat().st_size / 1e6:.1f} MB)")
