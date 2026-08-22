@@ -45,6 +45,7 @@ class SegmentEffort:
     elapsed_time_secs: float
     star_count: int
     distance_m: float
+    personal_star: bool = False  # whether the authenticated athlete starred it
 
 
 # ─── Token management ─────────────────────────────────────────
@@ -230,14 +231,10 @@ def get_segment_efforts(activity_id: int) -> list[SegmentEffort]:
     else:
         activity_start = None
 
-    # Filter to starred segments only (or all if none starred)
-    starred_efforts = [e for e in efforts_raw if e.get("segment", {}).get("starred")]
-    if starred_efforts:
-        print(f"  {len(efforts_raw)} segment efforts, {len(starred_efforts)} on starred segments")
-        source = starred_efforts
-    else:
-        print(f"  {len(efforts_raw)} segment efforts, none starred — using all")
-        source = efforts_raw
+    # Keep every segment as a candidate. The personal `starred` flag is a
+    # scoring signal downstream, not a filter — otherwise starring even one
+    # segment would hide all the others regardless of their popularity.
+    source = efforts_raw
 
     # Fetch star_count (total stars across all Strava users) for every
     # segment in this activity, using the local cache to avoid re-fetching
@@ -277,6 +274,7 @@ def get_segment_efforts(activity_id: int) -> list[SegmentEffort]:
             elapsed_time_secs=e.get("elapsed_time", 0),
             star_count=star_cache.get(sid, 0),
             distance_m=seg.get("distance", 0),
+            personal_star=seg.get("starred", False),
         )
         efforts.append(effort)
 

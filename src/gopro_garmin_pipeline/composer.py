@@ -447,13 +447,25 @@ def _candidates_from_highlights(
     return candidates
 
 
+# Strava candidate scoring. Popularity is log(star_count) normalized against
+# this ride's most-starred segment (0..1), scaled by _STRAVA_POPULARITY_WEIGHT.
+# A personal star adds _STRAVA_PERSONAL_STAR_BOOST — equal to the full
+# popularity weight, so a starred segment outranks the most popular unstarred
+# one without dominating by an unbounded margin.
+_STRAVA_POPULARITY_WEIGHT = 4.0
+_STRAVA_PERSONAL_STAR_BOOST = _STRAVA_POPULARITY_WEIGHT
+
 def _candidates_from_strava(
     strava_efforts: list, ride: RideData, synced_clips: list[SyncedClip], config: ComposerConfig,
 ) -> list[Segment]:
     """Generate candidates from Strava segment efforts.
 
-    Score: log(star_count) popularity bonus + telemetry at midpoint.
+    Score: per-ride normalized popularity + personal-star boost + telemetry
+    at the segment midpoint. All segments on the activity are candidates;
+    the athlete's own stars are a score signal, never a filter.
     """
+    max_stars = max((e.star_count for e in strava_efforts), default=0)
+
     candidates = []
     for effort in strava_efforts:
         ride_secs = effort.start_time_secs + effort.elapsed_time_secs / 2
@@ -466,7 +478,13 @@ def _candidates_from_strava(
         if clip_name is None:
             continue
 
-        star_score = math.log(max(1, effort.star_count))
+        popularity = (
+            math.log(max(1, effort.star_count)) / math.log(max_stars)
+            if max_stars > 1 else 0.0
+        )
+        star_score = popularity * _STRAVA_POPULARITY_WEIGHT
+        if effort.personal_star:
+            star_score += _STRAVA_PERSONAL_STAR_BOOST
         tel_score = _telemetry_score_at(ride, ride_secs)
         score = star_score + tel_score
 
@@ -486,6 +504,7 @@ def _candidates_from_strava(
                 "video_secs": video_secs,
                 "strava_segment_id": effort.segment_id,
                 "star_count": effort.star_count,
+                "personal_star": effort.personal_star,
             },
         ))
 
