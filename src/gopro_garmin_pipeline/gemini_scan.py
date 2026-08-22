@@ -943,6 +943,7 @@ def _hits_to_segments(
     """
     import datetime as dt
     from .composer import Segment
+    from .sync import normalize_tz
 
     clip_by_name = {sc.clip.path.name: sc for sc in synced_clips}
     candidates = []
@@ -965,8 +966,7 @@ def _hits_to_segments(
         # Anchor → wall time → ride seconds
         wall = sc.clip.creation_time + dt.timedelta(seconds=anchor)
         if ride.start_time:
-            if wall.tzinfo is not None:
-                wall = wall.astimezone(dt.timezone.utc).replace(tzinfo=None)
+            wall = normalize_tz(wall, ride.start_time)
             ride_secs = (wall - ride.start_time).total_seconds() + sc.offset_secs
         else:
             ride_secs = anchor
@@ -1029,6 +1029,7 @@ def _inject_telemetry_peaks(
     Returns the number of peaks added.
     """
     from .highlights import detect_highlights, HighlightConfig
+    from .sync import normalize_tz
     import datetime as dt
 
     if ride.start_time is None:
@@ -1047,9 +1048,7 @@ def _inject_telemetry_peaks(
             continue
         for sc in synced_clips:
             clip = sc.clip
-            clip_start = clip.creation_time
-            if clip_start.tzinfo is not None:
-                clip_start = clip_start.astimezone(dt.timezone.utc).replace(tzinfo=None)
+            clip_start = normalize_tz(clip.creation_time, peak_time)
             clip_end = clip_start + dt.timedelta(seconds=clip.duration_secs)
             # peak_time is FIT-timeline; subtract sc.offset_secs to get
             # the GoPro-timeline wall time, then check chapter bounds.

@@ -23,15 +23,15 @@ from gopro_garmin_pipeline.utils import rating_visual_action
 
 # ─── FIT and GoPro sync ─────────────────────────────────────
 
-def test_naive_fit_timestamps_sync_as_utc():
-    """Regression: FIT timestamps are naive UTC values from Garmin/Strava."""
+def test_fit_timestamps_parse_as_utc_aware():
+    """Regression: FIT timestamps are naive in the file; parse_fit attaches UTC."""
     from gopro_garmin_pipeline.fit_parser import RideData, RidePoint
     from gopro_garmin_pipeline.gopro_meta import GoProClip
     from gopro_garmin_pipeline.sync import auto_sync
     from pathlib import Path
 
-    # FIT: naive UTC timestamp (as parsed from FIT file)
-    fit_ts = dt.datetime(2026, 8, 16, 11, 38, 21)
+    # FIT timestamps arrive timezone-aware UTC from parse_fit.
+    fit_ts = dt.datetime(2026, 8, 16, 11, 38, 21, tzinfo=dt.timezone.utc)
     ride = RideData(points=[RidePoint(timestamp=fit_ts, speed=5.0)], start_time=fit_ts)
 
     # GoPro: UTC timestamp from ffprobe
@@ -44,9 +44,9 @@ def test_naive_fit_timestamps_sync_as_utc():
     )
 
     synced = auto_sync(clip, ride, offset_secs=0.0)
-    # Without a clock correction, the adjusted time remains naive UTC.
+    # Without a clock correction, the adjusted time stays aware UTC.
     adjusted = synced._adjust(0.0)
-    assert adjusted == dt.datetime(2026, 8, 16, 7, 41, 0)
+    assert adjusted == gopo_creation
 
 
 # ─── FFmpeg encoders ─────────────────────────────────────────

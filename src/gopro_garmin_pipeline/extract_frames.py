@@ -116,9 +116,8 @@ def extract_ride_frames(
     # Build work items
     work = []
     for clip in clips:
-        clip_start_wall = clip.creation_time
-        if ride_start and clip_start_wall.tzinfo is not None:
-            clip_start_wall = clip_start_wall.astimezone(dt.timezone.utc).replace(tzinfo=None)
+        from .sync import normalize_tz
+        clip_start_wall = normalize_tz(clip.creation_time, ride_start)
 
         clip_offset_into_ride = (clip_start_wall - ride_start).total_seconds() + offset
         if clip_offset_into_ride + clip.duration_secs < 0 or clip_offset_into_ride > ride_duration:

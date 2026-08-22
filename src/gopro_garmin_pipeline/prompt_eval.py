@@ -919,7 +919,7 @@ def enrich_model_hits_with_ride_time(
     from .fit_parser import parse_fit
     from .gopro_meta import extract_all
     from .models import cache_dir_name
-    from .sync import sync_all
+    from .sync import normalize_tz, sync_all
 
     date_folder = Path(date_folder)
 
@@ -960,8 +960,7 @@ def enrich_model_hits_with_ride_time(
 
             wall = sc.clip.creation_time + dt.timedelta(seconds=video_secs)
             if ride.start_time:
-                if wall.tzinfo is not None:
-                    wall = wall.astimezone(dt.timezone.utc).replace(tzinfo=None)
+                wall = normalize_tz(wall, ride.start_time)
                 ride_secs = (wall - ride.start_time).total_seconds() + sc.offset_secs
                 hit["ride_time_secs"] = round(ride_secs, 1)
                 changed = True

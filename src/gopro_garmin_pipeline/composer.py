@@ -351,14 +351,15 @@ def _candidates_from_short_clips(
     clip IS the highlight. Extracts a standard segment_duration window
     centered on the clip midpoint (same as all other candidate sources).
     """
+    from .sync import normalize_tz
+
     candidates = []
     for sc in synced_clips:
         clip = sc.clip
         mid_video = clip.duration_secs / 2
         mid_wall = clip.video_time_to_wall_time(mid_video)
         if ride.start_time:
-            if mid_wall.tzinfo is not None:
-                mid_wall = mid_wall.astimezone(dt.timezone.utc).replace(tzinfo=None)
+            mid_wall = normalize_tz(mid_wall, ride.start_time)
             ride_secs = (mid_wall - ride.start_time).total_seconds()
         else:
             ride_secs = 0
@@ -1070,6 +1071,7 @@ def _ride_time_to_video(
     each chapter has its own RTC drift.
     """
     import datetime as dt
+    from .sync import normalize_tz
 
     if not ride.start_time:
         return None, None
@@ -1078,9 +1080,7 @@ def _ride_time_to_video(
 
     for sc in synced_clips:
         clip = sc.clip
-        clip_start = clip.creation_time
-        if clip_start.tzinfo is not None:
-            clip_start = clip_start.astimezone(dt.timezone.utc).replace(tzinfo=None)
+        clip_start = normalize_tz(clip.creation_time, target_wall)
         clip_end = clip_start + dt.timedelta(seconds=clip.duration_secs)
 
         clip_offset = sc.offset_secs or offset

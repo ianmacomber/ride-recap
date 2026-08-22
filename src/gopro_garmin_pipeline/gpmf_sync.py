@@ -60,7 +60,7 @@ def _timestamp_fallback_offset(ride_dir: Path) -> float | None:
         clips = [extract_metadata(path) for path in video_paths]
         candidates = [c for c in clips if c.duration_secs >= 30.0] or clips
         first_clip = min(candidates, key=lambda clip: clip.creation_time)
-        ride_start = ride.start_time.replace(tzinfo=dt.timezone.utc)
+        ride_start = ride.start_time.astimezone(dt.timezone.utc)
         return (ride_start - first_clip.creation_time.astimezone(dt.timezone.utc)).total_seconds()
     except Exception:
         return None

@@ -38,17 +38,9 @@ class SyncedClip:
     ride_timezone: ZoneInfo | None = None
 
     def _adjust(self, video_secs: float) -> dt.datetime:
-        """Convert video time to FIT-aligned wall time.
-
-        Video time is measured in seconds from creation_time. We apply the
-        offset to align to FIT time. FIT timestamps are naive UTC, so the
-        lookup value strips tzinfo without any zone conversion.
-        """
+        """Convert video time to FIT-aligned wall time with tz normalization."""
         wall = self.clip.video_time_to_wall_time(video_secs)
         adjusted = wall + dt.timedelta(seconds=self.offset_secs)
-        if adjusted.tzinfo is not None:
-            adjusted = adjusted.astimezone(dt.timezone.utc)
-        adjusted = adjusted.replace(tzinfo=None)
         if self.ride.start_time:
             adjusted = normalize_tz(adjusted, self.ride.start_time)
         return adjusted
