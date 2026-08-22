@@ -57,12 +57,20 @@ def _timestamp_fallback_offset(ride_dir: Path) -> float | None:
         ride = parse_fit(fit_paths[0])
         if ride.start_time is None:
             return None
-        clips = [extract_metadata(path) for path in video_paths]
+        clips = []
+        for path in video_paths:
+            try:
+                clips.append(extract_metadata(path))
+            except Exception:
+                print(f"  timestamp fallback: skipping unreadable {path.name}")
+        if not clips:
+            return None
         candidates = [c for c in clips if c.duration_secs >= 30.0] or clips
         first_clip = min(candidates, key=lambda clip: clip.creation_time)
         ride_start = ride.start_time.astimezone(dt.timezone.utc)
         return (ride_start - first_clip.creation_time.astimezone(dt.timezone.utc)).total_seconds()
-    except Exception:
+    except Exception as exc:
+        print(f"  timestamp fallback failed: {exc}")
         return None
 
 
