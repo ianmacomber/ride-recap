@@ -70,12 +70,16 @@ _CREW_CACHE_PATH = Path.home() / ".ride_recap_cache" / "last_crew.txt"
 
 def _find_fits(folder: Path) -> list[Path]:
     """All FIT files in a ride folder, sorted so the first pick is deterministic."""
-    return sorted(list(folder.glob("*.fit")) + list(folder.glob("*.FIT")))
+    # Windows filesystems are case-insensitive, so *.fit and *.FIT match the
+    # same file; dedupe by name to avoid listing it twice.
+    by_name = {p.name: p for p in list(folder.glob("*.fit")) + list(folder.glob("*.FIT"))}
+    return sorted(by_name.values())
 
 
 def _find_mp4s(folder: Path) -> list[Path]:
     """All GoPro .MP4 chapters in a ride folder, either filename case."""
-    return list(folder.glob("*.MP4")) + list(folder.glob("*.mp4"))
+    by_name = {p.name: p for p in list(folder.glob("*.MP4")) + list(folder.glob("*.mp4"))}
+    return list(by_name.values())
 
 
 def _read_last_crew() -> str:
