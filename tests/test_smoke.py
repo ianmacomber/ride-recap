@@ -254,3 +254,65 @@ def test_serialized_candidate_reads_through_its_nested_label():
 def test_telemetry_only_candidate_is_honestly_zero():
     """No rubric, no label — nothing looked at this clip. Not a crash."""
     assert rating_visual_action({"score": 4.0, "sources": ["telemetry"]}) == (0, 0)
+
+
+# ─── Similarity-aware clip selection ────────────────────────
+
+def _seg(ride_secs, speed_mph, power_w, grade_pct, score=6.0, rubric=None):
+    from gopro_garmin_pipeline.composer import Segment
+    seg = Segment(clip_name="GX010001.MP4", video_start=ride_secs,
+                  video_end=ride_secs + 3, ride_time_secs=ride_secs, score=score)
+    seg.telemetry_features = {"speed_mph": speed_mph, "power_w": power_w,
+                              "grade_pct": grade_pct}
+    seg.rubric = rubric if rubric is not None else {
+        "composition": 7, "motion": 7, "scenery": 7, "subject": 7, "light": 7}
+    return seg
+
+
+def test_climb_and_its_descent_are_not_redundant():
+    """The case time-only crowding got backwards: grinding up a climb and
+    bombing the descent 40s later are adjacent in time and opposite in
+    every other axis. Both belong in the reel."""
+    from gopro_garmin_pipeline.composer import _redundancy
+
+    climb = _seg(1000, speed_mph=6, power_w=300, grade_pct=8)
+    descent = _seg(1040, speed_mph=30, power_w=0, grade_pct=-8)
+    assert _redundancy(descent, [climb]) < 0.5
+
+
+def test_near_identical_clips_still_suppress_each_other():
+    """Two 6 mph grinds a second apart are the same footage twice."""
+    from gopro_garmin_pipeline.composer import _redundancy
+
+    climb = _seg(1000, speed_mph=6, power_w=300, grade_pct=8)
+    twin = _seg(1001, speed_mph=6, power_w=305, grade_pct=8)
+    assert _redundancy(twin, [climb]) > 0.9
+
+
+def test_redundancy_falls_back_to_time_only_without_telemetry():
+    """No power meter, or a FIT gap over the anchor: similarity is unknown,
+    so closeness alone has to carry the penalty — the old behaviour."""
+    from gopro_garmin_pipeline.composer import Segment, _redundancy
+
+    a = Segment(clip_name="GX010001.MP4", video_start=0, video_end=3,
+                ride_time_secs=1000, score=6.0)
+    b = Segment(clip_name="GX010001.MP4", video_start=40, video_end=43,
+                ride_time_secs=1040, score=6.0)
+    assert _redundancy(b, [a]) == pytest.approx(math.exp(-40 / 120), abs=1e-6)
+    far = Segment(clip_name="GX010001.MP4", video_start=0, video_end=3,
+                  ride_time_secs=4000, score=6.0)
+    assert _redundancy(far, [a]) == 0.0
+
+
+def test_coverage_weight_trades_quality_against_spanning_the_ride():
+    """γ=0 chases peak clips; a high γ pulls picks into empty timeline."""
+    from gopro_garmin_pipeline.composer import _effective_score
+
+    picked = [_seg(0, speed_mph=18, power_w=180, grade_pct=0)]
+    strong_nearby = _seg(300, speed_mph=18, power_w=180, grade_pct=0, score=7.0)
+    weak_distant = _seg(5000, speed_mph=18, power_w=180, grade_pct=0, score=6.0)
+
+    assert (_effective_score(strong_nearby, picked, 0.0)
+            > _effective_score(weak_distant, picked, 0.0))
+    assert (_effective_score(weak_distant, picked, 3.0)
+            > _effective_score(strong_nearby, picked, 3.0))

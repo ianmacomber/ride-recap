@@ -170,6 +170,7 @@ def from_segment(seg) -> MomentProposal:
         sources=list(seg.sources) if seg.sources else ([seg.source] if seg.source else []),
         score=seg.score,
         rubric=dict(seg.rubric) if seg.rubric else {},
+        telemetry_features=dict(getattr(seg, "telemetry_features", None) or {}),
         portrait_crop_bias=seg.portrait_crop_bias,
         notes=label.get("notes", ""),
         type=label.get("type", ""),

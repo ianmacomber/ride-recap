@@ -52,6 +52,39 @@ _PROXIMITY_CROWDING_CAP = 2.0  # cap the sum so one big cluster can't lock out
 _LABEL_BOOST = 6.0            # editorial-voice boost for strong labels
 _LABEL_MIN_RATING = 6         # min visual/action rating that earns the boost
 
+# ── Similarity-aware redundancy ──────────────────────────────
+# Two clips are redundant only when they are close in ride time AND alike
+# in what they show. Time alone is a bad proxy: a rider grinds up a climb
+# (6 mph / 300 W / +8%) and bombs the descent 40s later (30 mph / 0 W /
+# -8%) — adjacent in time, opposite in every other axis, and narratively
+# the most interesting pair on the ride. Conversely two 19 mph cruises
+# down the same road ARE redundant however far apart they sit.
+#
+#   redundancy = exp(-Δt/τ) × (W_KIN·kin_sim + W_VIS·vis_sim)
+#
+# τ is a fixed short constant (not ride-span derived): past a couple of
+# minutes, footage is simply a different part of the ride.
+_REDUNDANCY_TAU = 120.0        # seconds — temporal decay of redundancy
+_REDUNDANCY_W_KIN = 0.65       # weight on telemetry (speed/power/grade)
+_REDUNDANCY_W_VIS = 0.35       # weight on the vision-model rubric axes
+# Scale denominators: the difference that counts as "meaningfully unalike".
+_KIN_SCALE_SPEED_MPH = 12.0
+_KIN_SCALE_POWER_W = 150.0
+_KIN_SCALE_GRADE_PCT = 6.0
+_VIS_SHARPNESS = 2.0           # higher = rubric differences separate faster
+_VIS_SIM_UNKNOWN = 0.5         # neutral when a candidate has no rubric
+
+# Coverage term: rewards picks that open up the biggest untouched stretch
+# of the timeline, so a chronological reel still spans the whole ride.
+# Traded off directly against quality — raise it for coverage, lower it
+# for peak clips. Tuned on a 4h11m ride carrying 82 minutes of footage.
+_COVERAGE_GAP_CAP = 600.0      # seconds — gap at which the bonus saturates
+
+# Hard floor between two cuts. Above segment_duration (which only prevents
+# literal frame sharing) because near-identical anchors a few seconds apart
+# are never both worth having; similarity handles the rest smoothly.
+_MIN_CUT_GAP_SECS = 8.0
+
 # Greedy quality phase: the eff score (base + label boost − crowding) drives
 # WHICH clips are picked first. Once the best remaining clip is net-negative
 # (crowded/dead), the quality phase stops and coverage-fill takes over to
@@ -63,7 +96,13 @@ _GREEDY_MIN_MARGINAL = 0.0     # end the quality phase once best marginal eff < 
 # filling the biggest remaining holes in the timeline. Ranks fillers by
 # gap-distance blended with score, so big holes are filled by the liveliest
 # available clip (dead clips are already score-damped by _liveness_penalty).
-_FILL_QUALITY_WEIGHT = 30.0    # seconds-of-gap each score point is worth in the blend
+_FILL_QUALITY_WEIGHT = 30.0    # legacy blend weight — superseded by
+                               # _FILL_COVERAGE_MULTIPLIER, kept for reference
+# Coverage-fill runs the same ranking as the quality phase with a heavier
+# coverage weight — its job is to span the ride, but score and redundancy
+# still count, so it can no longer drop a generic clip into a gap that a
+# genuinely good one could fill.
+_FILL_COVERAGE_MULTIPLIER = 2.0
 
 # Telemetry × vision liveness. Gemini scores composition, blind to effort,
 # so a scenic frame shot while soft-pedalling to a near-stop (5-7 mph at
@@ -86,11 +125,114 @@ def _proximity_crowding(t: float, picked_ts: list[float], tau: float) -> float:
     Adjacent picks contribute ~1.0, far-apart picks contribute ~0.
     Capped so a dense cluster of must_includes can't lock the greedy
     out of an entire region of the ride.
+
+    Time-only fallback, kept for candidates with no telemetry features
+    (a ride with no power meter, or a FIT gap over the anchor). The
+    similarity-aware path in ``_redundancy`` supersedes it whenever both
+    candidates carry features.
     """
     if not picked_ts:
         return 0.0
     raw = sum(math.exp(-abs(t - tp) / tau) for tp in picked_ts)
     return min(raw, _PROXIMITY_CROWDING_CAP)
+
+
+def _kin_sim(a: "Segment", b: "Segment") -> float | None:
+    """Telemetry similarity in [0, 1]. None when either lacks features.
+
+    Distance over (speed, power, grade), each normalised by the spread
+    that reads as "a different kind of riding". Climb-vs-descent lands
+    near 0; two cruises at the same speed land near 1.
+    """
+    fa, fb = a.telemetry_features, b.telemetry_features
+    if not fa or not fb:
+        return None
+    try:
+        d = math.sqrt(
+            ((fa["speed_mph"] - fb["speed_mph"]) / _KIN_SCALE_SPEED_MPH) ** 2
+            + ((fa["power_w"] - fb["power_w"]) / _KIN_SCALE_POWER_W) ** 2
+            + ((fa["grade_pct"] - fb["grade_pct"]) / _KIN_SCALE_GRADE_PCT) ** 2
+        )
+    except KeyError:
+        return None
+    return math.exp(-d)
+
+
+def _vis_sim(a: "Segment", b: "Segment") -> float:
+    """Rubric similarity in [0, 1] over the vision model's visual axes.
+
+    Neutral (_VIS_SIM_UNKNOWN) when either side was never rubric-scored,
+    so a missing rubric neither excuses nor condemns a candidate.
+    """
+    ra, rb = a.rubric or {}, b.rubric or {}
+    if not ra or not rb:
+        return _VIS_SIM_UNKNOWN
+    axes = set(ra) & set(rb)
+    if not axes:
+        return _VIS_SIM_UNKNOWN
+    d = math.sqrt(
+        sum((float(ra[k]) - float(rb[k])) ** 2 for k in axes) / len(axes)
+    ) / 10.0
+    return math.exp(-_VIS_SHARPNESS * d)
+
+
+def _redundancy(seg: "Segment", picked: list["Segment"]) -> float:
+    """How much ``seg`` duplicates what is already selected, in [0, cap].
+
+    Per already-picked clip: temporal closeness × feature similarity.
+    Summed and capped like the legacy crowding term, so one dense cluster
+    of must-includes cannot lock the greedy out of a whole region.
+    """
+    if not picked:
+        return 0.0
+    total = 0.0
+    for p in picked:
+        dt = abs(seg.ride_time_secs - p.ride_time_secs)
+        temporal = math.exp(-dt / _REDUNDANCY_TAU)
+        if temporal < 1e-3:
+            continue  # far enough away that nothing else matters
+        kin = _kin_sim(seg, p)
+        if kin is None:
+            # No telemetry to compare — fall back to pure time overlap so
+            # near-duplicates are still suppressed on power-meter-less rides.
+            similarity = 1.0
+        else:
+            similarity = (
+                _REDUNDANCY_W_KIN * kin + _REDUNDANCY_W_VIS * _vis_sim(seg, p)
+            )
+        total += temporal * similarity
+    return min(total, _PROXIMITY_CROWDING_CAP)
+
+
+def _coverage_bonus(seg: "Segment", picked: list["Segment"]) -> float:
+    """[0, 1] — how much untouched timeline this pick opens up.
+
+    Distance to the nearest already-picked clip, saturating at
+    _COVERAGE_GAP_CAP. Multiplied by config.coverage_weight at the call
+    site, which is what trades peak quality against spanning the ride.
+    """
+    if not picked:
+        return 1.0
+    nearest = min(abs(seg.ride_time_secs - p.ride_time_secs) for p in picked)
+    return min(nearest, _COVERAGE_GAP_CAP) / _COVERAGE_GAP_CAP
+
+
+def _effective_score(
+    seg: "Segment", picked: list["Segment"], coverage_weight: float,
+) -> float:
+    """The single ranking function used by every selection stage.
+
+        eff = score + label_boost − λ·redundancy + γ·coverage
+
+    Quality and coverage-fill differ only in ``coverage_weight`` — there
+    is no stage where score stops mattering.
+    """
+    return (
+        seg.score
+        + _label_boost(seg)
+        - _PROXIMITY_LAMBDA * _redundancy(seg, picked)
+        + coverage_weight * _coverage_bonus(seg, picked)
+    )
 
 
 def _diversity_tau(ride_times: list[float], n_clips: int) -> float:
@@ -144,6 +286,9 @@ class Segment:
     label: dict = field(repr=False, default_factory=dict)
     portrait_crop_bias: float = 0.0  # -1.0=left, 0.0=center, +1.0=right
     rubric: dict = field(default_factory=dict)  # multi-dim scores from Gemini
+    # {speed_mph, power_w, grade_pct} sampled around the anchor. Drives the
+    # similarity-aware redundancy term. Empty when telemetry is unavailable.
+    telemetry_features: dict = field(default_factory=dict)
 
     @property
     def duration(self) -> float:
@@ -183,6 +328,10 @@ class ComposerConfig:
     min_motion_mph: float = 5.0
     skip_gemini: bool = False
     skip_narrative: bool = False  # disable model narrative selection (use greedy)
+    # γ in the selection score — how hard picks are pushed to span the whole
+    # ride. 0 chases peak quality and will happily leave multi-hour holes;
+    # ~2 reproduces the old coverage behaviour. 1.5 is the tuned default.
+    coverage_weight: float = 1.5
     include_outro: bool = True  # crossfade last segment into recap card
     outro_crossfade_secs: float = 3.0
     outro_lead_in_secs: float = 2.0  # extra normal-playback seconds before crossfade
@@ -287,6 +436,59 @@ def _window_median(ride: RideData, ride_secs: float, attr: str) -> float | None:
         <= _LIVENESS_WINDOW_HALF_SECS
     ]
     return statistics.median(vals) if vals else None
+
+
+def _window_grade_pct(ride: RideData, ride_secs: float) -> float | None:
+    """Average gradient (%) over a ±window around ``ride_secs``.
+
+    Rise over run from the first to the last sample in the window, using
+    recorded distance rather than GPS math. Returns None when the window
+    is too short to be meaningful — under ~5 m of travel the quotient is
+    dominated by barometric noise.
+    """
+    if not ride.points:
+        return None
+    t0 = ride.points[0].timestamp
+    win = [
+        p for p in ride.points
+        if p.altitude is not None and p.distance is not None
+        and abs((p.timestamp - t0).total_seconds() - ride_secs)
+        <= _LIVENESS_WINDOW_HALF_SECS
+    ]
+    if len(win) < 2:
+        return None
+    d_dist = win[-1].distance - win[0].distance
+    if d_dist < 5.0:
+        return None
+    return 100.0 * (win[-1].altitude - win[0].altitude) / d_dist
+
+
+def _populate_telemetry_features(
+    candidates: list["Segment"], ride: RideData,
+) -> None:
+    """Attach {speed_mph, power_w, grade_pct} to each candidate in place.
+
+    Feeds the similarity term in ``_redundancy``. A candidate keeps an
+    empty dict when speed or grade is unavailable — ``_kin_sim`` then
+    returns None and redundancy degrades to the time-only behaviour.
+    Power defaults to 0 on rides with no power meter, which is correct:
+    two clips both lacking power should not look *dissimilar* over it.
+    """
+    filled = 0
+    for c in candidates:
+        speed_ms = _window_median(ride, c.ride_time_secs, "speed")
+        grade = _window_grade_pct(ride, c.ride_time_secs)
+        if speed_ms is None or grade is None:
+            continue
+        power = _window_median(ride, c.ride_time_secs, "power") or 0.0
+        c.telemetry_features = {
+            "speed_mph": speed_ms * MS_TO_MPH,
+            "power_w": float(power),
+            "grade_pct": grade,
+        }
+        filled += 1
+    if candidates:
+        print(f"  Telemetry features: {filled}/{len(candidates)} candidates")
 
 
 def _liveness_penalty(ride: RideData, ride_secs: float) -> float:
@@ -1162,19 +1364,23 @@ def _backfill_gaps(
 
 def _fill_to_count(
     selected: list[Segment], pool: list[Segment], n: int, min_gap: float,
+    fill_coverage_weight: float,
 ) -> list[Segment]:
     """Guarantee exactly ``n`` picks, spreading fillers across the ride.
 
     Runs after the quality greedy when it stopped short of the target count
-    (its remaining candidates were net-negative — crowded/dead). Each round
-    adds the pool candidate that best maximises ``nearest_gap + W·score``:
-    the biggest hole in the reel wins, but among candidates filling similar
-    holes the higher-scored (livelier — dead clips are score-damped) one is
-    preferred. Respects the hard ``min_gap`` so cuts never overlap. This
-    stage's job is count + coverage, so it is NOT gated on the crowding eff.
+    (its remaining candidates were net-negative — crowded/dead). Uses the
+    SAME ``_effective_score`` as the quality phase, only with a heavier
+    coverage weight: the biggest hole in the reel wins, but redundancy and
+    base score still count, so this stage can no longer drop a generic clip
+    into a gap that a genuinely good one could fill.
+
+    Because redundancy is similarity-aware, a clip the quality phase passed
+    over for sitting near an existing pick is eligible again here whenever
+    it is *unlike* that pick — the climb→descent case. Only the hard
+    ``min_gap`` is absolute, and it exists so cuts never share frames.
     """
     selected = list(selected)
-    selected_ts = [s.ride_time_secs for s in selected]
     used = {id(s) for s in selected}
     added = 0
     while len(selected) < n:
@@ -1183,22 +1389,21 @@ def _fill_to_count(
         for seg in pool:
             if id(seg) in used:
                 continue
-            nearest = (min(abs(seg.ride_time_secs - t) for t in selected_ts)
-                       if selected_ts else 1e9)
-            if nearest < min_gap:
+            if any(abs(seg.ride_time_secs - s.ride_time_secs) < min_gap
+                   for s in selected):
                 continue
-            key = nearest + _FILL_QUALITY_WEIGHT * seg.score
+            key = _effective_score(seg, selected, fill_coverage_weight)
             if key > best_key:
                 best_key, best = key, seg
         if best is None:
             break  # nothing left that respects min_gap
         selected.append(best)
-        selected_ts.append(best.ride_time_secs)
         used.add(id(best))
         added += 1
     if added:
-        print(f"  Coverage fill: +{added} clip(s) to reach the target count, "
-              f"placed in the largest timeline gaps (livelier clips preferred)")
+        print(f"  Coverage fill: +{added} clip(s) to reach the target count "
+              f"(same ranking as the quality phase, coverage weighted "
+              f"{fill_coverage_weight:g})")
     return selected
 
 
@@ -1364,6 +1569,13 @@ def select_segments(
     if not candidates:
         return []
 
+    # Similarity-aware selection needs telemetry on every candidate. Do this
+    # here rather than in _generate_candidates so precomputed candidates
+    # (re-composes from a saved moments.json, which predates the field) get
+    # features too. Cheap — a windowed median per candidate.
+    if ride is not None and any(not c.telemetry_features for c in candidates):
+        _populate_telemetry_features(candidates, ride)
+
     # Seed selection with "must include" candidates — they always make the cut
     must_includes = [s for s in candidates if s.label.get("must_include")]
     # n is the total slot count for the highlight (e.g. 20 for landscape, 10 for
@@ -1388,12 +1600,9 @@ def select_segments(
             # Two cuts closer than ``segment_duration`` would share
             # frames in the burn, so that's a hard reject regardless of
             # score.
-            min_gap = config.segment_duration
-            all_times = [s.ride_time_secs for s in candidates]
-            tau = _diversity_tau(all_times, n)
+            min_gap = max(config.segment_duration, _MIN_CUT_GAP_SECS)
             filtered = list(must_includes)
             filtered_ids = {id(s) for s in filtered}
-            filtered_ts = [s.ride_time_secs for s in filtered]
 
             ranked = sorted(
                 narrative,
@@ -1403,15 +1612,16 @@ def select_segments(
             for seg in ranked:
                 if id(seg) in filtered_ids:
                     continue
-                if any(abs(seg.ride_time_secs - t) < min_gap for t in filtered_ts):
+                if any(abs(seg.ride_time_secs - s.ride_time_secs) < min_gap
+                       for s in filtered):
                     continue
-                crowding = _proximity_crowding(seg.ride_time_secs, filtered_ts, tau)
-                eff = seg.score + _label_boost(seg) - _PROXIMITY_LAMBDA * crowding
+                # Coverage is not a factor here — the narrative pass already
+                # chose these for story shape; this only drops redundant picks.
+                eff = _effective_score(seg, filtered, 0.0)
                 if eff < 0.0:
                     continue
                 filtered.append(seg)
                 filtered_ids.add(id(seg))
-                filtered_ts.append(seg.ride_time_secs)
 
             # Force-include the best candidate inside any oversized gap.
             # Narrative selection often clusters around a single arc and
@@ -1429,32 +1639,29 @@ def select_segments(
             # fill the remaining slots using gap-filling logic below
             must_includes = filtered
 
-    # ── Diversity-aware greedy ────────────────────────────────
+    # ── Similarity-aware greedy ───────────────────────────────
     # Each iteration picks the candidate with the highest effective
     # score:
     #
-    #   eff = base_score + label_boost - λ * Σ exp(-|t - t_i| / τ)
+    #   eff = base_score + label_boost − λ·redundancy + γ·coverage
     #
-    # The proximity term grows as more nearby clips are picked, so two
-    # mediocre near-duplicates collapse to one — but two genuinely
-    # strong moments can sit close together if both clear the bar.
-    # Hard floor at ``segment_duration``: two cuts closer than that
-    # would share video frames in the burn.
-    min_gap = config.segment_duration
-    ride_times = [s.ride_time_secs for s in candidates]
-    tau = _diversity_tau(ride_times, n)
+    # redundancy is temporal closeness TIMES feature similarity, so two
+    # near-duplicates collapse to one while a climb and the descent off
+    # its summit both survive — adjacent in time, opposite in telemetry.
+    # γ (config.coverage_weight) trades peak quality against spanning the
+    # whole ride. Hard floor at ``_MIN_CUT_GAP_SECS`` so cuts never share
+    # frames and never sit on top of each other.
+    min_gap = max(config.segment_duration, _MIN_CUT_GAP_SECS)
 
     selected = list(must_includes)
     selected_set = {id(s) for s in must_includes}
-    selected_ts = [s.ride_time_secs for s in selected]
 
     pool = [s for s in candidates if id(s) not in selected_set]
 
     # Quality phase: pick highest-eff clips first. When the best remaining
     # clip goes net-negative (crowded/dead), stop the quality phase — but do
-    # NOT stop the reel: coverage-fill below tops it up to the full count by
-    # spreading clips across the timeline. So the count is guaranteed; eff
-    # only decides quality ORDERING.
+    # NOT stop the reel: coverage-fill below tops it up to the full count
+    # using the same ranking with a heavier coverage weight.
     remaining = max(0, n - len(selected))
     for _ in range(remaining):
         best_seg = None
@@ -1464,14 +1671,11 @@ def select_segments(
             if id(seg) in selected_set:
                 continue
             # Hard min-gap: avoid burning overlapping cuts.
-            if any(abs(seg.ride_time_secs - t) < min_gap for t in selected_ts):
+            if any(abs(seg.ride_time_secs - s.ride_time_secs) < min_gap
+                   for s in selected):
                 continue
 
-            eff = seg.score + _label_boost(seg)
-            eff -= _PROXIMITY_LAMBDA * _proximity_crowding(
-                seg.ride_time_secs, selected_ts, tau
-            )
-
+            eff = _effective_score(seg, selected, config.coverage_weight)
             if eff > best_eff:
                 best_eff = eff
                 best_seg = seg
@@ -1483,10 +1687,12 @@ def select_segments(
 
         selected.append(best_seg)
         selected_set.add(id(best_seg))
-        selected_ts.append(best_seg.ride_time_secs)
 
-    # Guarantee the full slot count, filling the biggest holes first.
-    selected = _fill_to_count(selected, pool, n, min_gap)
+    # Guarantee the full slot count, leaning harder on coverage.
+    selected = _fill_to_count(
+        selected, pool, n, min_gap,
+        config.coverage_weight * _FILL_COVERAGE_MULTIPLIER,
+    )
 
     selected.sort(key=lambda s: s.ride_time_secs)
     return selected[:n]
@@ -2075,6 +2281,7 @@ def compose_highlight(
     # Select for each format from the shared candidate pool
     landscape_segs = select_segments(
         config.landscape_duration, config,
+        ride=ride,
         precomputed_candidates=all_candidates,
         layout="landscape",
     )
@@ -2089,6 +2296,7 @@ def compose_highlight(
     if not config.landscape_only:
         portrait_segs = select_segments(
             config.portrait_duration, config,
+            ride=ride,
             precomputed_candidates=all_candidates,
             layout="portrait",
         )
