@@ -771,15 +771,14 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
         # Selection is similarity-aware, so it needs the ride telemetry to
         # match what compose_highlight will pick internally. Without it the
         # `auto` marks written to moments.json would disagree with the cut.
-        sel_ride = parse_fit(fit_path)
         landscape_segs = select_segments(
-            config.landscape_duration, config, ride=sel_ride,
+            config.landscape_duration, config, ride=ride,
             precomputed_candidates=candidates, layout="landscape",
         )
         portrait_segs = []
         if not config.landscape_only:
             portrait_segs = select_segments(
-                config.portrait_duration, config, ride=sel_ride,
+                config.portrait_duration, config, ride=ride,
                 precomputed_candidates=candidates, layout="portrait",
             )
         selected_ids = {

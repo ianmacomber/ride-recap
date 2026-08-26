@@ -45,9 +45,9 @@ The fusion step works like this:
 
 1. “Must include” manual labels are picked first
 2. A model narrative pass picks 20 clips to best tell the story of the ride, boosting “cross-source agreements” (if a human label + telemetry + Strava + vision all agree that a clip is interesting)
-3. Greedy re-ranking with a crowding penalty to avoid clips too close to something already selected
-   1. First, a “quality” phase that picks best-first until the best remaining candidate is net-negative with crowding penalty
-   2. Second, a “coverage” fill that guarantees the exact clip count by placing the liveliest available clips into the biggest timeline holes.
+3. Greedy re-ranking with a redundancy penalty, so a clip that repeats one already picked gets pushed down — [measured on time × feature similarity](#picking-clips-that-arent-the-same-clip), not ride time alone
+   1. First, a “quality” phase that picks best-first until the best remaining candidate is net-negative
+   2. Second, a “coverage” fill that guarantees the exact clip count, using the same ranking with coverage weighted higher — so the biggest timeline holes win, but score and redundancy still count.
 
 Generally, the visual rubric is the score of record, and telemetry is a tiebreaker.
 
@@ -289,9 +289,14 @@ weaker footage. The default is `1.5`. On a ride where you filmed 82 minutes out
 of four hours, buying back coverage means buying mediocre clips — there is no
 setting that invents good footage for the stretch where the camera was off.
 
-If your ride has no power meter, a FIT gap over a clip's anchor, or a candidate
-the vision model never scored, `kin_sim` returns `None`, similarity is treated
-as 1.0, and redundancy collapses to the old time-only decay.
+Not every ride can be compared this way. If a FIT carries no altitude there is
+no gradient to compare, and a gap over a clip's anchor leaves it with no
+telemetry at all; those pairs fall back to the ride-span time decay this used
+before — the old behaviour exactly, not an approximation of it. A ride with no
+power meter is fine: power reads as 0 W on both sides of every comparison,
+which is correct, since two clips that both lack power should not look
+*dissimilar* over it. A candidate the vision model never scored is fine too —
+that only makes `vis_sim` neutral, and the telemetry still does its work.
 
 ---
 

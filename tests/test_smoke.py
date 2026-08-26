@@ -269,6 +269,9 @@ def _seg(ride_secs, speed_mph, power_w, grade_pct, score=6.0, rubric=None):
     return seg
 
 
+_TAU = 750.0  # stand-in for _diversity_tau on a 4h ride at 20 slots
+
+
 def test_climb_and_its_descent_are_not_redundant():
     """The case time-only crowding got backwards: grinding up a climb and
     bombing the descent 40s later are adjacent in time and opposite in
@@ -277,7 +280,7 @@ def test_climb_and_its_descent_are_not_redundant():
 
     climb = _seg(1000, speed_mph=6, power_w=300, grade_pct=8)
     descent = _seg(1040, speed_mph=30, power_w=0, grade_pct=-8)
-    assert _redundancy(descent, [climb]) < 0.5
+    assert _redundancy(descent, [climb], _TAU) < 0.5
 
 
 def test_near_identical_clips_still_suppress_each_other():
@@ -286,22 +289,41 @@ def test_near_identical_clips_still_suppress_each_other():
 
     climb = _seg(1000, speed_mph=6, power_w=300, grade_pct=8)
     twin = _seg(1001, speed_mph=6, power_w=305, grade_pct=8)
-    assert _redundancy(twin, [climb]) > 0.9
+    assert _redundancy(twin, [climb], _TAU) > 0.9
 
 
-def test_redundancy_falls_back_to_time_only_without_telemetry():
-    """No power meter, or a FIT gap over the anchor: similarity is unknown,
-    so closeness alone has to carry the penalty — the old behaviour."""
-    from gopro_garmin_pipeline.composer import Segment, _redundancy
+def test_no_telemetry_keeps_the_pre_similarity_spacing():
+    """A FIT with no altitude has no gradient, so no pair can be compared
+    on features. Those pairs must fall through to the LEGACY ride-span
+    decay, not to the 120s one — on the short tau, two clips five minutes
+    apart score ~0.08 instead of ~0.67 and a whole reel loses its spacing.
+    """
+    from gopro_garmin_pipeline.composer import (
+        Segment, _proximity_crowding, _redundancy)
 
-    a = Segment(clip_name="GX010001.MP4", video_start=0, video_end=3,
-                ride_time_secs=1000, score=6.0)
-    b = Segment(clip_name="GX010001.MP4", video_start=40, video_end=43,
-                ride_time_secs=1040, score=6.0)
-    assert _redundancy(b, [a]) == pytest.approx(math.exp(-40 / 120), abs=1e-6)
-    far = Segment(clip_name="GX010001.MP4", video_start=0, video_end=3,
-                  ride_time_secs=4000, score=6.0)
-    assert _redundancy(far, [a]) == 0.0
+    def bare(ride_secs):
+        return Segment(clip_name="GX010001.MP4", video_start=ride_secs,
+                       video_end=ride_secs + 3, ride_time_secs=ride_secs,
+                       score=6.0)
+
+    picked = [bare(1000), bare(1500)]
+    seg = bare(1300)
+    legacy = _proximity_crowding(1300, [1000, 1500], _TAU)
+    assert _redundancy(seg, picked, _TAU) == pytest.approx(legacy, abs=1e-9)
+    # And it is the wide tau doing the work, not the short one.
+    assert _redundancy(seg, picked, _TAU) > 4 * math.exp(-200 / 120)
+
+
+def test_missing_rubric_does_not_reach_the_telemetry_fallback():
+    """A candidate the vision model never scored still has telemetry, so
+    it stays on the similarity path — _vis_sim goes neutral, kin_sim does
+    not go None."""
+    from gopro_garmin_pipeline.composer import _kin_sim, _redundancy
+
+    climb = _seg(1000, speed_mph=6, power_w=300, grade_pct=8, rubric={})
+    descent = _seg(1040, speed_mph=30, power_w=0, grade_pct=-8, rubric={})
+    assert _kin_sim(climb, descent) is not None
+    assert _redundancy(descent, [climb], _TAU) < 0.5
 
 
 def test_coverage_weight_trades_quality_against_spanning_the_ride():
@@ -312,7 +334,7 @@ def test_coverage_weight_trades_quality_against_spanning_the_ride():
     strong_nearby = _seg(300, speed_mph=18, power_w=180, grade_pct=0, score=7.0)
     weak_distant = _seg(5000, speed_mph=18, power_w=180, grade_pct=0, score=6.0)
 
-    assert (_effective_score(strong_nearby, picked, 0.0)
-            > _effective_score(weak_distant, picked, 0.0))
-    assert (_effective_score(weak_distant, picked, 3.0)
-            > _effective_score(strong_nearby, picked, 3.0))
+    assert (_effective_score(strong_nearby, picked, 0.0, _TAU)
+            > _effective_score(weak_distant, picked, 0.0, _TAU))
+    assert (_effective_score(weak_distant, picked, 3.0, _TAU)
+            > _effective_score(strong_nearby, picked, 3.0, _TAU))

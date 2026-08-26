@@ -93,11 +93,7 @@ _MIN_CUT_GAP_SECS = 8.0
 _GREEDY_MIN_MARGINAL = 0.0     # end the quality phase once best marginal eff < this
 
 # Coverage fill: after quality picks, guarantee the exact slot count by
-# filling the biggest remaining holes in the timeline. Ranks fillers by
-# gap-distance blended with score, so big holes are filled by the liveliest
-# available clip (dead clips are already score-damped by _liveness_penalty).
-_FILL_QUALITY_WEIGHT = 30.0    # legacy blend weight — superseded by
-                               # _FILL_COVERAGE_MULTIPLIER, kept for reference
+# filling the biggest remaining holes in the timeline.
 # Coverage-fill runs the same ranking as the quality phase with a heavier
 # coverage weight — its job is to span the ride, but score and redundancy
 # still count, so it can no longer drop a generic clip into a gap that a
@@ -126,10 +122,11 @@ def _proximity_crowding(t: float, picked_ts: list[float], tau: float) -> float:
     Capped so a dense cluster of must_includes can't lock the greedy
     out of an entire region of the ride.
 
-    Time-only fallback, kept for candidates with no telemetry features
-    (a ride with no power meter, or a FIT gap over the anchor). The
-    similarity-aware path in ``_redundancy`` supersedes it whenever both
-    candidates carry features.
+    The time-only fallback ``_redundancy`` uses for pairs it cannot
+    compare on features (a FIT with no altitude, so no gradient; a gap
+    over the anchor). ``tau`` here is the WIDE ride-span constant from
+    ``_diversity_tau`` — the behaviour this had before similarity
+    existed — not the short ``_REDUNDANCY_TAU``.
     """
     if not picked_ts:
         return 0.0
@@ -176,31 +173,44 @@ def _vis_sim(a: "Segment", b: "Segment") -> float:
     return math.exp(-_VIS_SHARPNESS * d)
 
 
-def _redundancy(seg: "Segment", picked: list["Segment"]) -> float:
+def _redundancy(
+    seg: "Segment", picked: list["Segment"], fallback_tau: float,
+) -> float:
     """How much ``seg`` duplicates what is already selected, in [0, cap].
 
-    Per already-picked clip: temporal closeness × feature similarity.
+    Per already-picked clip: temporal closeness × feature similarity, over
+    the short ``_REDUNDANCY_TAU`` — being minutes apart stops mattering
+    once the two clips show different riding.
+
+    Pairs that cannot be compared on features fall back to
+    ``_proximity_crowding`` at ``fallback_tau`` instead. That matters: the
+    short tau on its own is a much weaker diversity term than the old
+    ride-span one (5 minutes apart scores ~0.08 rather than ~0.67), so a
+    ride with no usable telemetry would quietly lose its spacing. Routing
+    those pairs through the legacy function keeps such a ride behaving
+    exactly as it did before similarity existed.
+
     Summed and capped like the legacy crowding term, so one dense cluster
     of must-includes cannot lock the greedy out of a whole region.
     """
     if not picked:
         return 0.0
     total = 0.0
+    legacy_ts: list[float] = []
     for p in picked:
+        kin = _kin_sim(seg, p)
+        if kin is None:
+            # Nothing to compare on — hand this pair to the legacy term.
+            legacy_ts.append(p.ride_time_secs)
+            continue
         dt = abs(seg.ride_time_secs - p.ride_time_secs)
         temporal = math.exp(-dt / _REDUNDANCY_TAU)
         if temporal < 1e-3:
             continue  # far enough away that nothing else matters
-        kin = _kin_sim(seg, p)
-        if kin is None:
-            # No telemetry to compare — fall back to pure time overlap so
-            # near-duplicates are still suppressed on power-meter-less rides.
-            similarity = 1.0
-        else:
-            similarity = (
-                _REDUNDANCY_W_KIN * kin + _REDUNDANCY_W_VIS * _vis_sim(seg, p)
-            )
-        total += temporal * similarity
+        total += temporal * (
+            _REDUNDANCY_W_KIN * kin + _REDUNDANCY_W_VIS * _vis_sim(seg, p)
+        )
+    total += _proximity_crowding(seg.ride_time_secs, legacy_ts, fallback_tau)
     return min(total, _PROXIMITY_CROWDING_CAP)
 
 
@@ -219,18 +229,20 @@ def _coverage_bonus(seg: "Segment", picked: list["Segment"]) -> float:
 
 def _effective_score(
     seg: "Segment", picked: list["Segment"], coverage_weight: float,
+    fallback_tau: float,
 ) -> float:
     """The single ranking function used by every selection stage.
 
         eff = score + label_boost − λ·redundancy + γ·coverage
 
     Quality and coverage-fill differ only in ``coverage_weight`` — there
-    is no stage where score stops mattering.
+    is no stage where score stops mattering. ``fallback_tau`` is only
+    consulted for candidate pairs with no comparable telemetry.
     """
     return (
         seg.score
         + _label_boost(seg)
-        - _PROXIMITY_LAMBDA * _redundancy(seg, picked)
+        - _PROXIMITY_LAMBDA * _redundancy(seg, picked, fallback_tau)
         + coverage_weight * _coverage_bonus(seg, picked)
     )
 
@@ -1364,7 +1376,7 @@ def _backfill_gaps(
 
 def _fill_to_count(
     selected: list[Segment], pool: list[Segment], n: int, min_gap: float,
-    fill_coverage_weight: float,
+    fill_coverage_weight: float, fallback_tau: float,
 ) -> list[Segment]:
     """Guarantee exactly ``n`` picks, spreading fillers across the ride.
 
@@ -1392,7 +1404,8 @@ def _fill_to_count(
             if any(abs(seg.ride_time_secs - s.ride_time_secs) < min_gap
                    for s in selected):
                 continue
-            key = _effective_score(seg, selected, fill_coverage_weight)
+            key = _effective_score(
+                seg, selected, fill_coverage_weight, fallback_tau)
             if key > best_key:
                 best_key, best = key, seg
         if best is None:
@@ -1584,6 +1597,11 @@ def select_segments(
     # the burn duration, not s.duration.
     n = max(1, int(budget_secs / config.segment_duration))
 
+    # Decay distance for the legacy time-only term, which _redundancy still
+    # uses for any candidate pair it cannot compare on features. Ride-span
+    # derived, exactly as before similarity existed.
+    fallback_tau = _diversity_tau([s.ride_time_secs for s in candidates], n)
+
     # Try model narrative selection first — apply proximity-aware filter and
     # backfill with greedy if the model returned too few or clustered clips.
     if not config.skip_narrative:
@@ -1617,7 +1635,7 @@ def select_segments(
                     continue
                 # Coverage is not a factor here — the narrative pass already
                 # chose these for story shape; this only drops redundant picks.
-                eff = _effective_score(seg, filtered, 0.0)
+                eff = _effective_score(seg, filtered, 0.0, fallback_tau)
                 if eff < 0.0:
                     continue
                 filtered.append(seg)
@@ -1675,7 +1693,8 @@ def select_segments(
                    for s in selected):
                 continue
 
-            eff = _effective_score(seg, selected, config.coverage_weight)
+            eff = _effective_score(
+                seg, selected, config.coverage_weight, fallback_tau)
             if eff > best_eff:
                 best_eff = eff
                 best_seg = seg
@@ -1692,6 +1711,7 @@ def select_segments(
     selected = _fill_to_count(
         selected, pool, n, min_gap,
         config.coverage_weight * _FILL_COVERAGE_MULTIPLIER,
+        fallback_tau,
     )
 
     selected.sort(key=lambda s: s.ride_time_secs)
