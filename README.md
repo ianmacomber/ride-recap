@@ -227,6 +227,74 @@ Only ffmpeg, a FIT file, and at least one `.MP4` are actually required. Everythi
 
 ---
 
+## Picking clips that aren't the same clip
+
+A highlight reel needs variety, so the selector penalises a candidate that sits
+near one already chosen. The obvious way to measure "near" is ride time, and
+that is what this did for a long time:
+
+```
+eff = score − λ · Σ exp(−Δt / τ),   τ = candidate_span / n_slots
+```
+
+On a four-hour ride τ works out to about 12 minutes, so anything within a dozen
+minutes of an existing pick reads as crowded — whatever it actually shows.
+
+For cycling that is exactly backwards. You grind up a climb at 5 mph and 307 W,
+crest it, and are doing 33 mph at zero watts forty seconds later. Adjacent in
+time; opposite in every other axis; the best pair of clips on the ride.
+
+Diversity is now measured on **time × feature similarity**:
+
+```
+redundancy = exp(−Δt / 120s) · (0.65 · kin_sim + 0.35 · vis_sim)
+```
+
+`kin_sim` compares speed, power and gradient, each normalised by the spread that
+reads as a different kind of riding. `vis_sim` compares the vision model's five
+rubric axes. Two clips suppress each other only when they are close **and**
+alike, so the metric separates a climb from the descent off its summit
+(`kin_sim` 0.017) while still recognising two grinds up the same hill as the
+same thing (`kin_sim` 0.772).
+
+![The Bradley/Tweed climb, before and after](assets/images/selection-climb-arc.jpg)
+
+That middle clip is the whole change. It is not one of my labels — it competed
+on merit and lost, because sitting 43 seconds from an already-picked descent
+drove its effective score to −6.90. It now scores +2.83 and the reel plays the
+climb twice before it drops.
+
+The same fix removed a separate problem. Coverage-fill — the stage that tops the
+reel up to its slot count — used to rank purely by `nearest_gap + 30 · score`,
+with no crowding check at all, which let a 3.25 clip in a big hole beat a 6.50
+anywhere else. It now runs the same scoring function as the quality phase and
+differs only in how heavily coverage is weighted. On the ride below it supplied
+6 of 20 landscape slots before the change and 0 after:
+
+![Three filler slots and what replaced them](assets/images/selection-filler.jpg)
+
+Across that reel — 90 candidates, 20 slots — mean clip score went 5.25 → 5.51,
+clips scoring under 4.0 went 2 → 1, and four of the twenty clips changed.
+
+```bash
+ride-recap process <date-folder>                        # default, 1.5
+ride-recap process <date-folder> --coverage-weight 0    # best clips, gaps allowed
+ride-recap process <date-folder> --coverage-weight 2    # span the whole ride
+```
+
+**`--coverage-weight`** is the dial, and the trade it makes is real. At `0` the
+selector chases the best clips wherever they are and will happily leave an hour
+of the ride unrepresented; at `2` it spans the whole ride even when that means
+weaker footage. The default is `1.5`. On a ride where you filmed 82 minutes out
+of four hours, buying back coverage means buying mediocre clips — there is no
+setting that invents good footage for the stretch where the camera was off.
+
+If your ride has no power meter, a FIT gap over a clip's anchor, or a candidate
+the vision model never scored, `kin_sim` returns `None`, similarity is treated
+as 1.0, and redundancy collapses to the old time-only decay.
+
+---
+
 ## Tuning it to your eye
 
 **`src/gopro_garmin_pipeline/prompts/gemini_scan/v10.md`** is the most important file in the repo. It's the system instruction for the vision scan: a five-dimension rubric (light, composition, motion, scenery, subject, each 1–10) with anchored examples and a set of named rules. Each rule is traceable to a specific clip that Gemini skipped and I loved, or Gemini included and I hated. My taste is legislated in there: the openness gate exists because a rail-trail tunnel scored 7.2 and I think tunnels look like being stuck in a concrete tube. **You may disagree.** If your taste is different, write `v11.md`.
