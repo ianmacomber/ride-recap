@@ -101,4 +101,7 @@ class GeminiAdapter:
 
     def is_transient_error(self, exc: BaseException) -> bool:
         msg = str(exc)
-        return any(code in msg for code in ("503", "429", "UNAVAILABLE"))
+        return any(
+            code in msg
+            for code in ("503", "429", "504", "UNAVAILABLE", "DEADLINE_EXCEEDED")
+        )

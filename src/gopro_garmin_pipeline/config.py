@@ -4,8 +4,22 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from zoneinfo import available_timezones
 
 from pydantic_settings import BaseSettings
+
+
+def _get_system_timezone() -> str:
+    """Return the system timezone as an IANA name usable by zoneinfo."""
+    try:
+        from tzlocal import get_localzone_name
+
+        timezone_name = get_localzone_name()
+        if timezone_name in available_timezones():
+            return timezone_name
+    except Exception:
+        pass
+    return "America/New_York"
 
 
 class Settings(BaseSettings):
@@ -67,6 +81,9 @@ class Settings(BaseSettings):
     speed_spike_threshold: float = 12.0          # m/s (~27 mph)
     hr_spike_threshold: float | None = None      # defaults to ~87% of max HR
 
+    # --- Timezone ---
+    ride_timezone: str = ""
+
     # --- Paths ---
     data_dir: Path = Path("data")
 
@@ -79,6 +96,8 @@ class Settings(BaseSettings):
             self.power_spike_threshold = round(self.ftp * 1.45)
         if self.hr_spike_threshold is None:
             self.hr_spike_threshold = round(self.max_heart_rate * 0.87)
+        if not self.ride_timezone:
+            self.ride_timezone = _get_system_timezone()
 
     @property
     def raw_dir(self) -> Path:

@@ -24,6 +24,7 @@ import io
 import math
 import subprocess
 import sys
+import threading
 import urllib.request
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -41,17 +42,15 @@ from .design.tokens import (
 from . import intro_styles
 from .fit_parser import RideData, RidePoint, parse_fit
 from .gopro_meta import GoProClip, extract_metadata
-from .sync import auto_sync
+from .sync import auto_sync, get_ride_timezone
 
 # ─── Unit conversions ──────────────────────────────────────────
 _MS_TO_MPH = 2.23694
 _M_TO_MILES = 1 / 1609.344
 _M_TO_FT = 3.28084
 
-# GoPro creation_time and FIT timestamps are UTC. The user rides in
-# NYC/Boston, both America/New_York, so we convert to that zone for the
-# time-of-day title card. DST-correct via zoneinfo.
-RIDE_TIMEZONE = "America/New_York"
+# GoPro creation_time and FIT timestamps are UTC. The configured ride
+# timezone is used for the time-of-day title card.
 
 # ─── Training zone colors (progressive cold→hot) ─────────────
 # Sourced from design/tokens.json. Thresholds (fraction of FTP / max HR)
@@ -437,11 +436,12 @@ class OverlayRenderer:
     def _local_wall(self, video_secs: float) -> dt.datetime:
         """Wall-clock capture time at *video_secs* into the clip, in the
         ride's local timezone. GoPro creation_time is UTC."""
-        from zoneinfo import ZoneInfo
-        wall = self.clip.creation_time + dt.timedelta(seconds=video_secs)
+        wall = self.clip.creation_time + dt.timedelta(
+            seconds=video_secs + self.synced.offset_secs
+        )
         if wall.tzinfo is None:
             wall = wall.replace(tzinfo=dt.timezone.utc)
-        return wall.astimezone(ZoneInfo(RIDE_TIMEZONE))
+        return wall.astimezone(self.synced.ride_timezone or get_ride_timezone())
 
     def _prefetch_tiles(self):
         if len(self.route_pts) < 2:
@@ -458,13 +458,7 @@ class OverlayRenderer:
         print(f"  Fetched {n}/{len(tiles)} tiles")
 
     def _get_point(self, video_secs: float) -> RidePoint | None:
-        from .sync import normalize_tz
-        creation = self.clip.creation_time
-        wall = creation + dt.timedelta(seconds=video_secs)
-        adjusted = wall + dt.timedelta(seconds=self.synced.offset_secs)
-        if self.ride.start_time:
-            adjusted = normalize_tz(adjusted, self.ride.start_time)
-        return self.ride.point_at(adjusted)
+        return self.ride.point_at(self.synced._adjust(video_secs))
 
     def _get_gradient(self, point: RidePoint) -> float:
         idx = self.ride.point_index(point)
@@ -1175,24 +1169,42 @@ def burn_overlay(
 
     # Encoding
     cmd += _encode_args(encode_preset)
+    cmd += ["-hide_banner", "-loglevel", "error", "-nostats"]
     cmd.append(str(output_path))
 
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
 
-    for f in range(total_frames):
-        overlay = renderer.render_frame(start_offset + f / clip.fps)
-        proc.stdin.write(overlay.tobytes())
-        if (f + 1) % 30 == 0 or f == total_frames - 1:
-            print(f"\r  Frame {f + 1}/{total_frames} ({(f + 1) / total_frames * 100:.0f}%)",
-                  end="", flush=True)
+    # Drained on a thread: a full stderr pipe blocks ffmpeg, which then stops
+    # reading stdin and deadlocks the frame writes below.
+    stderr_chunks: list[bytes] = []
+    stderr_thread = threading.Thread(
+        target=lambda: stderr_chunks.append(proc.stderr.read()), daemon=True,
+    )
+    stderr_thread.start()
 
-    proc.stdin.close()
-    _, stderr = proc.communicate()
+    try:
+        for f in range(total_frames):
+            overlay = renderer.render_frame(start_offset + f / clip.fps)
+            proc.stdin.write(overlay.tobytes())
+            if (f + 1) % 30 == 0 or f == total_frames - 1:
+                print(f"\r  Frame {f + 1}/{total_frames} ({(f + 1) / total_frames * 100:.0f}%)",
+                      end="", flush=True)
+    except BrokenPipeError:
+        pass  # ffmpeg exited early; its stderr below explains why
+    finally:
+        try:
+            proc.stdin.close()
+        except BrokenPipeError:
+            pass
+
+    proc.wait()
+    stderr_thread.join()
+    stderr = b"".join(c for c in stderr_chunks if c)
     print()
 
     if proc.returncode != 0:
-        print(f"FFmpeg error:\n{stderr.decode()[-500:]}")
+        print(f"FFmpeg error:\n{stderr.decode(errors='replace')[-500:]}")
         raise RuntimeError("FFmpeg failed")
 
     print(f"Output: {output_path} ({output_path.stat().st_size / 1e6:.1f} MB)")

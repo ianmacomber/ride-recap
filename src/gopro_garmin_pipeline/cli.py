@@ -457,6 +457,7 @@ def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_di
     require_ffmpeg()
     from .burn_overlay import ENCODE_MASTER, ENCODE_PREVIEW
     from .composer import ComposerConfig, compose_highlight
+    from .config import get_settings
     from .gpmf_sync import resolve_offsets
     from .utils import keep_system_awake
 
@@ -495,6 +496,8 @@ def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_di
         portrait_duration=portrait_duration,
         segment_duration=segment_duration,
         offset=resolved_offset,
+        ride_timezone=get_settings().ride_timezone,
+        ride_timezone_explicit="ride_timezone" in get_settings().model_fields_set,
         per_clip_offsets=per_clip_offsets or None,
         landscape_only=landscape_only,
         strava_activity_id=strava_activity,
@@ -658,6 +661,7 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
                   grade_wb: str = "off"):
     """Body of `process` — extracted so caffeinate wraps the whole run."""
     from .composer import ComposerConfig, generate_all_candidates, compose_highlight
+    from .config import get_settings
     from .gpmf_sync import resolve_offset
 
     # Discover files (`process` already preflighted and warned about
@@ -700,6 +704,8 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
         portrait_duration=portrait_duration,
         segment_duration=segment_duration,
         offset=resolved_offset,
+        ride_timezone=get_settings().ride_timezone,
+        ride_timezone_explicit="ride_timezone" in get_settings().model_fields_set,
         strava_activity_id=strava_activity,
         skip_gemini=skip_gemini,
         origin=origin,

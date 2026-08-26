@@ -33,6 +33,8 @@ dependencies = [
     "flask>=3.0",
     "streamlit>=1.35.0",
     "requests>=2.31",
+    "timezonefinder>=6.0",
+    "tzlocal>=5.0",
 ]
 
 [project.urls]

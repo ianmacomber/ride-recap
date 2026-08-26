@@ -149,7 +149,8 @@ def parse_fit(path: str | Path) -> RideData:
         lon = _semicircles_to_degrees(lon_raw) if lon_raw is not None else None
 
         point = RidePoint(
-            timestamp=timestamp,
+            timestamp=timestamp.replace(tzinfo=dt.timezone.utc)
+            if timestamp.tzinfo is None else timestamp,
             lat=lat,
             lon=lon,
             power=values.get("power"),
