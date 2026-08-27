@@ -543,6 +543,10 @@ def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_di
 @click.option("--landscape-duration", default=60.0, help="Landscape video duration (seconds)")
 @click.option("--portrait-duration", default=30.0, help="Portrait video duration (seconds)")
 @click.option("--segment-duration", default=3.0, help="Clip segment duration (seconds)")
+@click.option("--coverage-weight", default=1.5,
+              help="Trade ride coverage against clip quality. 0 = pick the best "
+                   "clips wherever they are (may leave long gaps); 2 = span the "
+                   "whole ride even if that means weaker clips. Default 1.5.")
 @click.option(
     "--skip-vision", "--skip-gemini", "skip_gemini", is_flag=True,
     help="Skip the configured vision-model scan",
@@ -576,7 +580,7 @@ def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_di
 def process(date_folder: Path, offset: float, no_auto_sync: bool,
             strava_activity: int | None,
             landscape_duration: float, portrait_duration: float,
-            segment_duration: float,
+            segment_duration: float, coverage_weight: float,
             skip_gemini: bool, skip_review: bool, no_upload: bool, port: int,
             origin: str | None, destination: str | None, subtitle: str | None,
             road: str | None, crew: str | None, lockup: str | None,
@@ -636,6 +640,7 @@ def process(date_folder: Path, offset: float, no_auto_sync: bool,
             date_folder, offset, no_auto_sync, strava_activity,
             landscape_duration, portrait_duration, segment_duration,
             skip_gemini, skip_review, no_upload, port,
+            coverage_weight=coverage_weight,
             origin=fields["origin"], destination=fields["destination"],
             subtitle=fields["subtitle"], road=fields["road"],
             crew=fields["crew"], lockup=lockup, far_pin=far_pin,
@@ -651,6 +656,7 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
                   segment_duration: float,
                   skip_gemini: bool, skip_review: bool, no_upload: bool, port: int,
                   *,
+                  coverage_weight: float = 1.5,
                   origin: str | None = None, destination: str | None = None,
                   subtitle: str | None = None, road: str | None = None,
                   crew: str | None = None, lockup: str | None = None,
@@ -703,6 +709,7 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
         landscape_duration=landscape_duration,
         portrait_duration=portrait_duration,
         segment_duration=segment_duration,
+        coverage_weight=coverage_weight,
         offset=resolved_offset,
         ride_timezone=get_settings().ride_timezone,
         ride_timezone_explicit="ride_timezone" in get_settings().model_fields_set,
@@ -761,14 +768,17 @@ def _process_body(date_folder: Path, offset: float, no_auto_sync: bool,
         # — same inputs, deterministic output (modulo model narrative
         # selection, which is allowed a small amount of nondeterminism).
         from .composer import select_segments
+        # Selection is similarity-aware, so it needs the ride telemetry to
+        # match what compose_highlight will pick internally. Without it the
+        # `auto` marks written to moments.json would disagree with the cut.
         landscape_segs = select_segments(
-            config.landscape_duration, config,
+            config.landscape_duration, config, ride=ride,
             precomputed_candidates=candidates, layout="landscape",
         )
         portrait_segs = []
         if not config.landscape_only:
             portrait_segs = select_segments(
-                config.portrait_duration, config,
+                config.portrait_duration, config, ride=ride,
                 precomputed_candidates=candidates, layout="portrait",
             )
         selected_ids = {
@@ -1300,7 +1310,7 @@ def compare_features(date_folder, strava_activity, skip_gemini):
         )
 
         segs = select_segments(
-            cfg.landscape_duration, cfg,
+            cfg.landscape_duration, cfg, ride=_ride,
             precomputed_candidates=all_candidates,
             layout="landscape",
         )

@@ -45,9 +45,9 @@ The fusion step works like this:
 
 1. “Must include” manual labels are picked first
 2. A model narrative pass picks 20 clips to best tell the story of the ride, boosting “cross-source agreements” (if a human label + telemetry + Strava + vision all agree that a clip is interesting)
-3. Greedy re-ranking with a crowding penalty to avoid clips too close to something already selected
-   1. First, a “quality” phase that picks best-first until the best remaining candidate is net-negative with crowding penalty
-   2. Second, a “coverage” fill that guarantees the exact clip count by placing the liveliest available clips into the biggest timeline holes.
+3. Greedy re-ranking with a redundancy penalty, so a clip that repeats one already picked gets pushed down — [measured on time × feature similarity](#picking-clips-that-arent-the-same-clip), not ride time alone
+   1. First, a “quality” phase that picks best-first until the best remaining candidate is net-negative
+   2. Second, a “coverage” fill that guarantees the exact clip count, using the same ranking with coverage weighted higher — so the biggest timeline holes win, but score and redundancy still count.
 
 Generally, the visual rubric is the score of record, and telemetry is a tiebreaker.
 
@@ -224,6 +224,79 @@ Only ffmpeg, a FIT file, and at least one `.MP4` are actually required. Everythi
 | `.LRV` proxies | Falls back to the `.MP4` with keyframe-only decode. Slower, same result. |
 | Labels | Fully optional. This is the default mode. |
 | ffmpeg | Hard stop, up front, with install instructions. |
+
+---
+
+## Picking clips that aren't the same clip
+
+A highlight reel needs variety, so the selector penalises a candidate that sits
+near one already chosen. The obvious way to measure "near" is ride time, and
+that is what this did for a long time:
+
+```
+eff = score − λ · Σ exp(−Δt / τ),   τ = candidate_span / n_slots
+```
+
+On a four-hour ride τ works out to about 12 minutes, so anything within a dozen
+minutes of an existing pick reads as crowded — whatever it actually shows.
+
+For cycling that is exactly backwards. You grind up a climb at 5 mph and 307 W,
+crest it, and are doing 33 mph at zero watts forty seconds later. Adjacent in
+time; opposite in every other axis; the best pair of clips on the ride.
+
+Diversity is now measured on **time × feature similarity**:
+
+```
+redundancy = exp(−Δt / 120s) · (0.65 · kin_sim + 0.35 · vis_sim)
+```
+
+`kin_sim` compares speed, power and gradient, each normalised by the spread that
+reads as a different kind of riding. `vis_sim` compares the vision model's five
+rubric axes. Two clips suppress each other only when they are close **and**
+alike, so the metric separates a climb from the descent off its summit
+(`kin_sim` 0.017) while still recognising two grinds up the same hill as the
+same thing (`kin_sim` 0.772).
+
+![The Bradley/Tweed climb, before and after](assets/images/selection-climb-arc.jpg)
+
+That middle clip is the whole change. It is not one of my labels — it competed
+on merit and lost, because sitting 43 seconds from an already-picked descent
+drove its effective score to −6.90. It now scores +2.83 and the reel plays the
+climb twice before it drops.
+
+The same fix removed a separate problem. Coverage-fill — the stage that tops the
+reel up to its slot count — used to rank purely by `nearest_gap + 30 · score`,
+with no crowding check at all, which let a 3.25 clip in a big hole beat a 6.50
+anywhere else. It now runs the same scoring function as the quality phase and
+differs only in how heavily coverage is weighted. On the ride below it supplied
+6 of 20 landscape slots before the change and 0 after:
+
+![Three filler slots and what replaced them](assets/images/selection-filler.jpg)
+
+Across that reel — 90 candidates, 20 slots — mean clip score went 5.25 → 5.51,
+clips scoring under 4.0 went 2 → 1, and four of the twenty clips changed.
+
+```bash
+ride-recap process <date-folder>                        # default, 1.5
+ride-recap process <date-folder> --coverage-weight 0    # best clips, gaps allowed
+ride-recap process <date-folder> --coverage-weight 2    # span the whole ride
+```
+
+**`--coverage-weight`** is the dial, and the trade it makes is real. At `0` the
+selector chases the best clips wherever they are and will happily leave an hour
+of the ride unrepresented; at `2` it spans the whole ride even when that means
+weaker footage. The default is `1.5`. On a ride where you filmed 82 minutes out
+of four hours, buying back coverage means buying mediocre clips — there is no
+setting that invents good footage for the stretch where the camera was off.
+
+Not every ride can be compared this way. If a FIT carries no altitude there is
+no gradient to compare, and a gap over a clip's anchor leaves it with no
+telemetry at all; those pairs fall back to the ride-span time decay this used
+before — the old behaviour exactly, not an approximation of it. A ride with no
+power meter is fine: power reads as 0 W on both sides of every comparison,
+which is correct, since two clips that both lack power should not look
+*dissimilar* over it. A candidate the vision model never scored is fine too —
+that only makes `vis_sim` neutral, and the telemetry still does its work.
 
 ---
 
