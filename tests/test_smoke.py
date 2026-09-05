@@ -338,3 +338,105 @@ def test_coverage_weight_trades_quality_against_spanning_the_ride():
             > _effective_score(weak_distant, picked, 0.0, _TAU))
     assert (_effective_score(weak_distant, picked, 3.0, _TAU)
             > _effective_score(strong_nearby, picked, 3.0, _TAU))
+
+
+# ── Adjacent-duplicate repair ────────────────────────────────────
+# Pinned to real values measured on a 20-clip reel: two George Washington
+# Bridge shots 167s apart scored 0.914 rubric similarity and read as the
+# same clip twice, while the Palisades (0.743) and River Road (0.789)
+# pairs are genuinely different shots of one place.
+
+def _vseg(notes, rubric, t, score=7.0, source="gemini"):
+    from gopro_garmin_pipeline.composer import Segment
+    return Segment(clip_name="GX01.MP4", video_start=0.0, video_end=3.0,
+                   ride_time_secs=t, score=score, source=source,
+                   label={"notes": notes}, rubric=rubric)
+
+
+_GWB_A = {"light": 7, "composition": 8, "motion": 5, "scenery": 9, "subject": 7}
+_GWB_B = {"light": 6, "composition": 8, "motion": 5, "scenery": 9, "subject": 7}
+_PAL_A = {"light": 5, "composition": 7, "motion": 8, "scenery": 8, "subject": 5}
+_PAL_B = {"light": 7, "composition": 6, "motion": 5, "scenery": 8, "subject": 7}
+
+
+def test_same_landmark_same_look_is_adjacent_duplicate():
+    from gopro_garmin_pipeline import composer as c
+    a = _vseg("Iconic approach beneath the steel tower of the George "
+              "Washington Bridge", _GWB_A, 2246.0)
+    b = _vseg("Iconic approach of the George Washington Bridge tower under "
+              "a clear sky.", _GWB_B, 2413.0)
+    assert c._vis_sim(a, b) > 0.85
+    assert c._is_adjacent_duplicate(a, b)
+
+
+def test_same_landmark_different_look_survives():
+    """A climb and a descent on one road are two shots, not a repeat."""
+    from gopro_garmin_pipeline import composer as c
+    a = _vseg("Descending the iconic Henry Hudson Drive past dramatic "
+              "Palisades cliffs.", _PAL_A, 2785.0)
+    b = _vseg("Closing the gap to draft a friend along the Palisades "
+              "cliffs.", _PAL_B, 2900.0)
+    assert c._shares_landmark(a, b)
+    assert c._vis_sim(a, b) < 0.85
+    assert not c._is_adjacent_duplicate(a, b)
+
+
+def test_landmark_extraction_edge_cases():
+    from gopro_garmin_pipeline import composer as c
+
+    def lm(n):
+        return c._landmarks(_vseg(n, _GWB_A, 0.0))
+
+    # Sentence-initial landmark survives (it is not a lead word).
+    assert "Palisades" in lm("Palisades overlook with cliffs below.")
+    # Acronyms and route refs are landmarks despite being short.
+    assert "GWB" in lm("GWB tower under a clear sky.")
+    assert "9W" in lm("Riding 9W north past the overlook.")
+    # A bare generic noun names nothing on its own.
+    assert not lm("Fast descent, River far below.")
+
+
+def test_generic_noun_does_not_conflate_distinct_places():
+    from gopro_garmin_pipeline import composer as c
+    hudson = _vseg("Crossing the Hudson River.", _GWB_A, 0.0)
+    river_rd = _vseg("Shaded climb on River Road.", _GWB_A, 100.0)
+    assert not c._shares_landmark(hudson, river_rd)
+
+
+def test_repair_never_drops_a_must_include():
+    from gopro_garmin_pipeline import composer as c
+    a = _vseg("Iconic approach beneath the steel tower of the George "
+              "Washington Bridge", _GWB_A, 2246.0)
+    b = _vseg("Iconic approach of the George Washington Bridge tower under "
+              "a clear sky.", _GWB_B, 2413.0)
+    b.label["must_include"] = True
+    out = c._repair_adjacent_duplicates([a, b], [], 3.0, 1.5, 600.0)
+    assert b in out, "a must-include clip must never be removed"
+    assert len(out) == 1, "the unprotected clip of the pair goes instead"
+
+
+def test_repair_drops_rather_than_swapping_in_filler():
+    from gopro_garmin_pipeline import composer as c
+    a = _vseg("Iconic approach beneath the steel tower of the George "
+              "Washington Bridge", _GWB_A, 2246.0)
+    b = _vseg("Iconic approach of the George Washington Bridge tower under "
+              "a clear sky.", _GWB_B, 2413.0)
+    junk = _vseg("Generic empty road with no subject.", _PAL_A, 9000.0,
+                 score=1.0)
+    out = c._repair_adjacent_duplicates([a, b], [junk], 3.0, 1.5, 600.0)
+    assert junk not in out, "below-floor filler must not enter the reel"
+    assert len(out) == 1
+
+
+def test_repair_swaps_in_a_good_unique_clip():
+    """A replacement above the reel's quality floor is preferred to a drop."""
+    from gopro_garmin_pipeline import composer as c
+    a = _vseg("Iconic approach beneath the steel tower of the George "
+              "Washington Bridge", _GWB_A, 2246.0)
+    b = _vseg("Iconic approach of the George Washington Bridge tower under "
+              "a clear sky.", _GWB_B, 2413.0)
+    alt = _vseg("Descending the iconic Henry Hudson Drive past dramatic "
+                "Palisades cliffs.", _PAL_A, 3000.0, score=7.5)
+    out = c._repair_adjacent_duplicates([a, b], [alt], 3.0, 1.5, 600.0)
+    assert len(out) == 2
+    assert alt in out and b not in out

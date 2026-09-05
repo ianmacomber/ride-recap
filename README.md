@@ -298,6 +298,35 @@ which is correct, since two clips that both lack power should not look
 *dissimilar* over it. A candidate the vision model never scored is fine too —
 that only makes `vis_sim` neutral, and the telemetry still does its work.
 
+### Two clips of one bridge, back to back
+
+There is one repeat the redundancy term cannot catch, because it is a property
+of the *sequence* rather than of any clip on its own. Redundancy is multiplied
+by `exp(−Δt / 120s)`, so a pair far enough apart in time is forgiven no matter
+how identical it looks. Cross the George Washington Bridge over three minutes
+and you get two clips that are minutes and a kilometre apart, score well
+independently, and play back to back as the same shot twice. Going over the GWB
+is just going over the GWB; it looks the same anywhere on it.
+
+So after selection, the chronologically ordered reel gets one repair pass. Two
+consecutive cuts are a duplicate when they **name the same landmark** — proper
+nouns pulled out of the vision model's own note, since the scan prompt does not
+emit a structured place field — **and** their rubrics are near-identical
+(`vis_sim` > 0.85). Both halves are needed. The landmark alone would suppress
+the Palisades and River Road pairs, which share a road and are genuinely
+different shots of it; on the reel this was tuned against, the bridge pair
+scored 0.914 while those two scored 0.743 and 0.789. The rubric is what
+distinguishes a uniform place from a varied one, so no per-landmark
+classification is needed.
+
+The later clip of an offending pair is swapped for the best remaining candidate
+that introduces no new adjacency — but only one that clears the quality floor
+the rest of the reel already meets. Once 20 clips are picked from 90 what is
+left is mostly filler, and trading a strong repeat for a weak unique shot swaps
+one visible flaw for another. When nothing good enough is available the repeat
+is dropped instead and the reel runs one clip short. A clip you marked **must
+include** in the labeler is never the one removed.
+
 ---
 
 ## Tuning it to your eye
