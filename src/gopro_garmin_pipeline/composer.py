@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import statistics
 import subprocess
 from dataclasses import dataclass, field
@@ -73,6 +74,11 @@ _KIN_SCALE_POWER_W = 150.0
 _KIN_SCALE_GRADE_PCT = 6.0
 _VIS_SHARPNESS = 2.0           # higher = rubric differences separate faster
 _VIS_SIM_UNKNOWN = 0.5         # neutral when a candidate has no rubric
+# Above this rubric similarity, two consecutive cuts of the same named
+# landmark read as the same shot twice. Measured on a 20-clip reel: the
+# repeated bridge-deck pair scored 0.914, while the two cliff-road pairs
+# (0.743 and 0.789) are genuinely different shots of one place.
+_ADJACENT_VIS_THRESHOLD = 0.85
 
 # Coverage term: rewards picks that open up the biggest untouched stretch
 # of the timeline, so a chronological reel still spans the whole ride.
@@ -171,6 +177,147 @@ def _vis_sim(a: "Segment", b: "Segment") -> float:
         sum((float(ra[k]) - float(rb[k])) ** 2 for k in axes) / len(axes)
     ) / 10.0
     return math.exp(-_VIS_SHARPNESS * d)
+
+
+# Capitalised runs ("George Washington Bridge"), all-caps acronyms
+# ("GWB", "NYC") and route refs ("9W", "US-1"), which name a place just
+# as specifically as a spelled-out noun does.
+#
+# Route refs come before the bare ``[A-Z]{2,}`` acronym branch: Python
+# alternation is first-match, not longest-match, so with the acronym
+# first "US-1" yields the landmark "US" and every US route on the ride
+# collapses into one place.
+_PROPER_NOUN_RE = re.compile(
+    r"\b(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*|[A-Z]+-?\d+|\d+[A-Z]+|[A-Z]{2,})")
+
+# A match is sentence-initial if nothing precedes it but whitespace or the
+# end of the previous sentence. Capitalisation says nothing about such a
+# word: "Ends at the pier" opens with a verb wearing a proper noun's hat.
+_SENTENCE_START_RE = re.compile(r"(?:\A|[.!?]['\")\]]*)\s*\Z")
+
+# Sentence-initial words that a capitalisation rule alone cannot tell from
+# a proper noun. Scan notes open with one of these verbs or adjectives, so
+# stripping them keeps "Iconic approach of the George Washington Bridge"
+# from yielding the landmark "Iconic approach".
+_LANDMARK_LEAD_WORDS = frozenset("""
+    the a an approaching cruising descending climbing fast iconic steady low
+    high dynamic sweeping catching closing overtaking entering quiet empty
+    generic unremarkable riding passing shaded steep surging drafting
+    following rolling rounding crossing leaving heading pushing chasing
+    tight wide open busy scenic wooded leafy historic downhill uphill
+""".split())
+
+
+# Common nouns that are real place-words but name nothing on their own.
+# "River" capitalised mid-sentence is not a landmark; "Hudson River" is.
+# Only ever applied to a single-word extraction — a multi-word run
+# containing one of these ("River Road") is a name and is kept.
+_GENERIC_PLACE_WORDS = frozenset("""
+    river road street avenue drive lane path trail way bridge tunnel park
+    hill climb descent overlook bike lake creek mountain summit gate wall
+    north south east west side loop route highway parkway greenway
+""".split())
+
+
+def _landmarks(seg: "Segment") -> frozenset[str]:
+    """Proper-noun landmarks named in a segment's vision-model note.
+
+    Multi-word runs of capitalised words ("George Washington Bridge",
+    "Central Park West"), minus the sentence-opening verb or adjective
+    that capitalisation alone cannot distinguish from a real name.
+
+    Deliberately reads the free-text note rather than a structured field:
+    the scan prompt does not emit one yet, for any provider. Callers must
+    treat an empty set as "unknown", never as "no landmark here" — a note
+    that simply did not mention a place is not evidence that two clips
+    differ.
+    """
+    notes = (seg.label or {}).get("notes", "") or ""
+    found: set[str] = set()
+    for m in _PROPER_NOUN_RE.finditer(notes):
+        words = m.group(0).split()
+        opens_sentence = bool(_SENTENCE_START_RE.search(notes[:m.start()]))
+        # Sentence case can dress an ordinary opening word as a proper noun,
+        # but only strip it when it actually is one — dropping index 0
+        # unconditionally eats the first word of every Strava segment name,
+        # which always sits at index 0. Once a lead word is stripped, what
+        # follows it is no longer sentence-initial and is trusted normally.
+        if words and words[0].lower() in _LANDMARK_LEAD_WORDS:
+            words = words[1:]
+            opens_sentence = False
+        if not words:
+            continue
+        name = " ".join(words)
+        # Acronyms and route refs ("GWB", "9W") are shorter than the
+        # length floor that filters noise out of ordinary words.
+        is_ref = len(words) == 1 and (
+            words[0].isupper() or any(ch.isdigit() for ch in words[0]))
+        if len(words) == 1 and words[0].lower() in _GENERIC_PLACE_WORDS:
+            continue
+        # A lone capitalised word opening a sentence, not covered by the
+        # lead-word list and not an acronym, is unknowable: "Ends at the
+        # pier" and "Palisades overlook" are the same shape. Refusing it
+        # costs a landmark the repair might have used; accepting it lets
+        # two notes that merely open with the same ordinary word read as
+        # the same place, and drop a clip that belonged in the reel. The
+        # false negative is the safe one, and multi-sentence notes make
+        # this case common — every sentence has an opener, not just the
+        # first.
+        if opens_sentence and len(words) == 1 and not is_ref:
+            continue
+        if is_ref or len(name) > 3:
+            found.add(name)
+    return frozenset(found)
+
+
+def _is_subsequence(short: list[str], long: list[str]) -> bool:
+    """Whether ``short`` appears as a run of whole words inside ``long``."""
+    if not short or len(short) > len(long):
+        return False
+    return any(long[i:i + len(short)] == short
+               for i in range(len(long) - len(short) + 1))
+
+
+def _shares_landmark(a: "Segment", b: "Segment") -> bool:
+    """True when two segments name a landmark in common.
+
+    Substring-tolerant so the same place written at different lengths
+    still matches — one stretch gets called both "River Road" and
+    "Palisades River Road", and those must not read as two places.
+    """
+    la, lb = _landmarks(a), _landmarks(b)
+    if not la or not lb:
+        return False
+    for x in la:
+        wx = x.lower().split()
+        for y in lb:
+            wy = y.lower().split()
+            # Whole-word containment. Raw substring would let a bare
+            # "River" claim both "Hudson River" and "River Road", merging
+            # two genuinely different places into one landmark.
+            if _is_subsequence(wx, wy) or _is_subsequence(wy, wx):
+                return True
+    return False
+
+
+def _is_adjacent_duplicate(a: "Segment", b: "Segment") -> bool:
+    """Whether two *consecutive* cuts would read as the same shot twice.
+
+    Same named landmark AND near-identical rubric. This is deliberately
+    NOT time- or distance-gated: a large landmark stays visually constant
+    across minutes of riding and a kilometre of road, which is exactly
+    the case ``_redundancy`` cannot catch — its similarity term is
+    multiplied by ``exp(-dt / _REDUNDANCY_TAU)``, so a pair far enough
+    apart in time is forgiven no matter how identical it looks.
+
+    The rubric does the work of deciding whether a landmark is uniform
+    (a bridge deck, which looks the same along its whole length) or
+    varied (a cliff road of climbs and descents, where two shots a
+    kilometre apart genuinely differ). No per-landmark classification is
+    needed: uniform places produce near-identical rubrics and varied
+    ones do not.
+    """
+    return _shares_landmark(a, b) and _vis_sim(a, b) > _ADJACENT_VIS_THRESHOLD
 
 
 def _redundancy(
@@ -1648,10 +1795,19 @@ def select_segments(
             # before returning, so the cut spans the whole ride.
             filtered = _backfill_gaps(filtered, candidates, budget_secs, config)
 
-            # If we have enough, return as-is
+            # If we have enough, return as-is — after the same
+            # adjacent-duplicate repair the greedy path gets. The
+            # narrative pass picks for story shape and will happily
+            # narrate one landmark twice in a row, so this path needs
+            # the check just as much.
             if len(filtered) >= n:
                 filtered.sort(key=lambda s: s.ride_time_secs)
-                return filtered[:n]
+                picked_ids = {id(f) for f in filtered[:n]}
+                return _repair_adjacent_duplicates(
+                    filtered[:n],
+                    [c for c in candidates if id(c) not in picked_ids],
+                    min_gap, 0.0, fallback_tau,
+                )
 
             # Otherwise, seed greedy with what Gemini gave us and let it
             # fill the remaining slots using gap-filling logic below
@@ -1715,7 +1871,116 @@ def select_segments(
     )
 
     selected.sort(key=lambda s: s.ride_time_secs)
+    selected = _repair_adjacent_duplicates(
+        selected, pool, min_gap, config.coverage_weight, fallback_tau)
     return selected[:n]
+
+
+def _repair_adjacent_duplicates(
+    selected: list["Segment"], pool: list["Segment"], min_gap: float,
+    coverage_weight: float, fallback_tau: float,
+) -> list["Segment"]:
+    """Swap out cuts that would play back-to-back as the same shot.
+
+    Runs on the chronologically ordered reel, after selection: the defect
+    it fixes is a property of the final sequence, not of any candidate on
+    its own. Two clips of one bridge are fine in a reel; two *in a row*
+    are not.
+
+    The later clip of each offending pair is replaced with the best
+    remaining candidate that introduces no new adjacency violation — but
+    only if that candidate clears the bar the rest of the reel already
+    meets. By the time 20 clips are chosen from 90, what is left is
+    mostly filler, and swapping a strong duplicate for a weak unique shot
+    trades one visible flaw for another. When nothing good enough is
+    available the duplicate is simply dropped, leaving a reel one clip
+    shorter and every clip in it worth watching.
+    """
+    if len(selected) < 2:
+        return selected
+
+    used = {id(s) for s in selected}
+    skip: set[tuple[int, int]] = set()  # pairs nothing can be done about
+
+    def _pick_victim() -> int | None:
+        """Index of the clip to remove, honouring must-include clips.
+
+        A must-include is the user checking "this moment ships" in the
+        labeler; the repair must never quietly delete one. When the later
+        clip of a pair is protected the earlier one goes instead, and when
+        both are protected the pair is left alone.
+        """
+        for i in range(1, len(selected)):
+            if (id(selected[i - 1]), id(selected[i])) in skip:
+                continue
+            if not _is_adjacent_duplicate(selected[i - 1], selected[i]):
+                continue
+            later_locked = _is_must_include(selected[i].label or {})
+            earlier_locked = _is_must_include(selected[i - 1].label or {})
+            if not later_locked:
+                return i
+            if not earlier_locked:
+                return i - 1
+            skip.add((id(selected[i - 1]), id(selected[i])))
+        return None
+
+    # Bounded: each pass fixes at least one pair or stops.
+    for _ in range(len(selected)):
+        victim_idx = _pick_victim()
+        if victim_idx is None:
+            break
+
+        keep = [s for j, s in enumerate(selected) if j != victim_idx]
+        # A replacement has to be at least as good as the weakest *real*
+        # clip the reel carries. Coverage-fill may have topped the reel up
+        # with filler, and anchoring to that would let almost anything in.
+        real = [s.score for s in keep if s.source != "filler"]
+        quality_floor = min(real) if real else min(s.score for s in keep)
+        best, best_eff = None, -999.0
+        cleared_floor = False
+        for cand in pool:
+            if cand.score < quality_floor:
+                continue
+            if id(cand) in used:
+                continue
+            cleared_floor = True
+            if any(abs(cand.ride_time_secs - k.ride_time_secs) < min_gap
+                   for k in keep):
+                continue
+            # Only the adjacencies this candidate would create disqualify
+            # it. Testing the whole trial reel instead would let a single
+            # unfixable pair elsewhere — two must-includes of one landmark,
+            # say — reject every candidate for every other repair, turning
+            # swaps that were available into drops.
+            trial = sorted(keep + [cand], key=lambda s: s.ride_time_secs)
+            at = trial.index(cand)
+            if at > 0 and _is_adjacent_duplicate(trial[at - 1], cand):
+                continue
+            if at + 1 < len(trial) and _is_adjacent_duplicate(cand, trial[at + 1]):
+                continue
+            eff = _effective_score(cand, keep, coverage_weight, fallback_tau)
+            if eff > best_eff:
+                best, best_eff = cand, eff
+
+        victim = selected[victim_idx]
+        used.discard(id(victim))
+        if best is None:
+            # Nothing usable to swap in — drop the repeat instead. Name the
+            # reason that actually applied: "nothing scored high enough" and
+            # "the good ones all sat too close to a pick" point at different
+            # knobs when a reel comes back short.
+            why = (f"every candidate above score {quality_floor:.2f} was too "
+                   f"close to a pick or repeated one"
+                   if cleared_floor else
+                   f"no candidate above score {quality_floor:.2f}")
+            print(f"  Adjacent duplicate: dropped 1 clip "
+                  f"({(victim.label or {}).get('notes', '')[:48]!r}) — {why}")
+            selected = keep
+            continue
+        used.add(id(best))
+        selected = sorted(keep + [best], key=lambda s: s.ride_time_secs)
+
+    return selected
 
 
 # ═══════════════════════════════════════════════════════════════
