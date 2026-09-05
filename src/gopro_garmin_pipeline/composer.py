@@ -182,8 +182,18 @@ def _vis_sim(a: "Segment", b: "Segment") -> float:
 # Capitalised runs ("George Washington Bridge"), all-caps acronyms
 # ("GWB", "NYC") and route refs ("9W", "US-1"), which name a place just
 # as specifically as a spelled-out noun does.
+#
+# Route refs come before the bare ``[A-Z]{2,}`` acronym branch: Python
+# alternation is first-match, not longest-match, so with the acronym
+# first "US-1" yields the landmark "US" and every US route on the ride
+# collapses into one place.
 _PROPER_NOUN_RE = re.compile(
-    r"\b(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*|[A-Z]{2,}|\d+[A-Z]+|[A-Z]+-?\d+)")
+    r"\b(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*|[A-Z]+-?\d+|\d+[A-Z]+|[A-Z]{2,})")
+
+# A match is sentence-initial if nothing precedes it but whitespace or the
+# end of the previous sentence. Capitalisation says nothing about such a
+# word: "Ends at the pier" opens with a verb wearing a proper noun's hat.
+_SENTENCE_START_RE = re.compile(r"(?:\A|[.!?]['\")\]]*)\s*\Z")
 
 # Sentence-initial words that a capitalisation rule alone cannot tell from
 # a proper noun. Scan notes open with one of these verbs or adjectives, so
@@ -226,13 +236,15 @@ def _landmarks(seg: "Segment") -> frozenset[str]:
     found: set[str] = set()
     for m in _PROPER_NOUN_RE.finditer(notes):
         words = m.group(0).split()
+        opens_sentence = bool(_SENTENCE_START_RE.search(notes[:m.start()]))
         # Sentence case can dress an ordinary opening word as a proper noun,
         # but only strip it when it actually is one — dropping index 0
-        # unconditionally destroys single-word landmarks ("Palisades
-        # overlook…", "Manhattan skyline…") and eats the first word of every
-        # Strava segment name, which always sits at index 0.
+        # unconditionally eats the first word of every Strava segment name,
+        # which always sits at index 0. Once a lead word is stripped, what
+        # follows it is no longer sentence-initial and is trusted normally.
         if words and words[0].lower() in _LANDMARK_LEAD_WORDS:
             words = words[1:]
+            opens_sentence = False
         if not words:
             continue
         name = " ".join(words)
@@ -241,6 +253,17 @@ def _landmarks(seg: "Segment") -> frozenset[str]:
         is_ref = len(words) == 1 and (
             words[0].isupper() or any(ch.isdigit() for ch in words[0]))
         if len(words) == 1 and words[0].lower() in _GENERIC_PLACE_WORDS:
+            continue
+        # A lone capitalised word opening a sentence, not covered by the
+        # lead-word list and not an acronym, is unknowable: "Ends at the
+        # pier" and "Palisades overlook" are the same shape. Refusing it
+        # costs a landmark the repair might have used; accepting it lets
+        # two notes that merely open with the same ordinary word read as
+        # the same place, and drop a clip that belonged in the reel. The
+        # false negative is the safe one, and multi-sentence notes make
+        # this case common — every sentence has an opener, not just the
+        # first.
+        if opens_sentence and len(words) == 1 and not is_ref:
             continue
         if is_ref or len(name) > 3:
             found.add(name)
@@ -1914,17 +1937,26 @@ def _repair_adjacent_duplicates(
         real = [s.score for s in keep if s.source != "filler"]
         quality_floor = min(real) if real else min(s.score for s in keep)
         best, best_eff = None, -999.0
+        cleared_floor = False
         for cand in pool:
             if cand.score < quality_floor:
                 continue
             if id(cand) in used:
                 continue
+            cleared_floor = True
             if any(abs(cand.ride_time_secs - k.ride_time_secs) < min_gap
                    for k in keep):
                 continue
+            # Only the adjacencies this candidate would create disqualify
+            # it. Testing the whole trial reel instead would let a single
+            # unfixable pair elsewhere — two must-includes of one landmark,
+            # say — reject every candidate for every other repair, turning
+            # swaps that were available into drops.
             trial = sorted(keep + [cand], key=lambda s: s.ride_time_secs)
-            if any(_is_adjacent_duplicate(trial[i - 1], trial[i])
-                   for i in range(1, len(trial))):
+            at = trial.index(cand)
+            if at > 0 and _is_adjacent_duplicate(trial[at - 1], cand):
+                continue
+            if at + 1 < len(trial) and _is_adjacent_duplicate(cand, trial[at + 1]):
                 continue
             eff = _effective_score(cand, keep, coverage_weight, fallback_tau)
             if eff > best_eff:
@@ -1933,10 +1965,16 @@ def _repair_adjacent_duplicates(
         victim = selected[victim_idx]
         used.discard(id(victim))
         if best is None:
-            # Nothing good enough to swap in — drop the repeat instead.
+            # Nothing usable to swap in — drop the repeat instead. Name the
+            # reason that actually applied: "nothing scored high enough" and
+            # "the good ones all sat too close to a pick" point at different
+            # knobs when a reel comes back short.
+            why = (f"every candidate above score {quality_floor:.2f} was too "
+                   f"close to a pick or repeated one"
+                   if cleared_floor else
+                   f"no candidate above score {quality_floor:.2f}")
             print(f"  Adjacent duplicate: dropped 1 clip "
-                  f"({(victim.label or {}).get('notes', '')[:48]!r}) — "
-                  f"no replacement above score {quality_floor:.2f}")
+                  f"({(victim.label or {}).get('notes', '')[:48]!r}) — {why}")
             selected = keep
             continue
         used.add(id(best))

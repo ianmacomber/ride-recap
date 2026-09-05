@@ -312,7 +312,11 @@ So after selection, the chronologically ordered reel gets one repair pass. Two
 consecutive cuts are a duplicate when they **name the same landmark** — proper
 nouns pulled out of the vision model's own note, since the scan prompt does not
 emit a structured place field — **and** their rubrics are near-identical
-(`vis_sim` > 0.85). Both halves are needed. The landmark alone would suppress
+(`vis_sim` > 0.85). Extraction errs toward missing a landmark rather than
+inventing one: a lone capitalised word opening a sentence is not treated as a
+place, because "Ends at the pier" and "Palisades overlook" are the same shape
+and only one of them is a landmark. Missing one lets a repeat through; inventing
+one drops a clip that belonged in the reel. Both halves are needed. The landmark alone would suppress
 the Palisades and River Road pairs, which share a road and are genuinely
 different shots of it; on the reel this was tuned against, the bridge pair
 scored 0.914 while those two scored 0.743 and 0.789. The rubric is what

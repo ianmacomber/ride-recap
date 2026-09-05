@@ -387,13 +387,39 @@ def test_landmark_extraction_edge_cases():
     def lm(n):
         return c._landmarks(_vseg(n, _GWB_A, 0.0))
 
-    # Sentence-initial landmark survives (it is not a lead word).
-    assert "Palisades" in lm("Palisades overlook with cliffs below.")
-    # Acronyms and route refs are landmarks despite being short.
+    # A landmark survives anywhere but the opening of a sentence, including
+    # right after a stripped lead word.
+    assert "Palisades" in lm("Fast run past the Palisades overlook.")
+    assert "Palisades" in lm("Approaching Palisades overlook.")
+    # Acronyms and route refs are landmarks despite being short, and are
+    # trusted even sentence-initially — no ordinary word looks like them.
     assert "GWB" in lm("GWB tower under a clear sky.")
     assert "9W" in lm("Riding 9W north past the overlook.")
     # A bare generic noun names nothing on its own.
     assert not lm("Fast descent, River far below.")
+
+
+def test_route_refs_are_not_truncated_to_their_prefix():
+    """Regex alternation is first-match: the route branch must precede the
+    bare-acronym one, or every US route collapses into the landmark "US"."""
+    from gopro_garmin_pipeline import composer as c
+    lm = lambda n: c._landmarks(_vseg(n, _GWB_A, 0.0))  # noqa: E731
+    assert lm("Riding US-1 north.") == frozenset({"US-1"})
+    assert lm("Fast run down NY-17 today.") == frozenset({"NY-17"})
+    assert not c._shares_landmark(_vseg("Riding US-1 north.", _GWB_A, 0.0),
+                                  _vseg("Fast on US-9 today.", _GWB_A, 100.0))
+
+
+def test_sentence_openers_in_a_multi_sentence_note_are_not_landmarks():
+    """Every sentence has an opener, not just the first, and a lone
+    capitalised verb is indistinguishable from a lone capitalised place."""
+    from gopro_garmin_pipeline import composer as c
+    lm = lambda n: c._landmarks(_vseg(n, _GWB_A, 0.0))  # noqa: E731
+    assert lm("Ends at the Hudson River. Bridge deck ahead.") == frozenset(
+        {"Hudson River"})
+    assert not c._shares_landmark(
+        _vseg("Ends at the pier. Quiet road.", _GWB_A, 0.0),
+        _vseg("Ends near the wall. Open sky.", _GWB_A, 100.0))
 
 
 def test_generic_noun_does_not_conflate_distinct_places():
@@ -440,3 +466,27 @@ def test_repair_swaps_in_a_good_unique_clip():
     out = c._repair_adjacent_duplicates([a, b], [alt], 3.0, 1.5, 600.0)
     assert len(out) == 2
     assert alt in out and b not in out
+
+
+def test_one_unfixable_pair_does_not_block_other_repairs():
+    """A candidate is judged on the adjacencies it would create, not on the
+    whole reel — otherwise a locked duplicate pair turns every other swap
+    into a drop."""
+    from gopro_garmin_pipeline import composer as c
+    locked_a = _vseg("Iconic approach of the George Washington Bridge tower.",
+                     _GWB_A, 100.0)
+    locked_b = _vseg("Steady roll across the George Washington Bridge deck.",
+                     _GWB_B, 200.0)
+    locked_a.label["must_include"] = True
+    locked_b.label["must_include"] = True
+    dup_a = _vseg("Climbing onto the Verrazzano Bridge span.", _GWB_A, 400.0)
+    dup_b = _vseg("Cresting the Verrazzano Bridge span again.", _GWB_B, 500.0)
+    alt = _vseg("Descending past dramatic Palisades cliffs.", _PAL_A, 800.0,
+                score=8.0)
+
+    out = c._repair_adjacent_duplicates(
+        [locked_a, locked_b, dup_a, dup_b], [alt], 3.0, 1.5, 600.0)
+
+    assert alt in out, "the repairable pair should have been swapped, not dropped"
+    assert len(out) == 4
+    assert locked_a in out and locked_b in out, "must-includes are untouched"
