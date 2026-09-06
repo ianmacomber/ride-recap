@@ -187,18 +187,39 @@ def _vis_sim(a: "Segment", b: "Segment") -> float:
 # alternation is first-match, not longest-match, so with the acronym
 # first "US-1" yields the landmark "US" and every US route on the ride
 # collapses into one place.
+#
+# The digit-first route branch takes at most two digits and exactly one
+# letter. Scan notes echo telemetry with a unit glued on ("246W",
+# "25MPH"), and a looser ``\d+[A-Z]+`` reads every one of those as a
+# place, so two clips at the same wattage become the same landmark.
 _PROPER_NOUN_RE = re.compile(
-    r"\b(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*|[A-Z]+-?\d+|\d+[A-Z]+|[A-Z]{2,})")
+    r"\b(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*|[A-Z]+-?\d+|\d{1,2}[A-Z]\b|[A-Z]{2,})")
+
+# All-caps jargon the acronym branch cannot tell from a place name. Units
+# and cycling shorthand turn up in notes ("holding 300W at 90RPM", "GPS
+# trace", "a KOM effort") and name nothing on the map.
+_NOT_LANDMARK_ACRONYMS = frozenset("""
+    GPS KOM QOM PR MPH KPH KMH BPM RPM FTP HR NP TSS POV HD
+""".split())
 
 # A match is sentence-initial if nothing precedes it but whitespace or the
 # end of the previous sentence. Capitalisation says nothing about such a
 # word: "Ends at the pier" opens with a verb wearing a proper noun's hat.
-_SENTENCE_START_RE = re.compile(r"(?:\A|[.!?]['\")\]]*)\s*\Z")
+#
+# " + " counts as a boundary too: candidate fusion joins the notes of the
+# clips it merges with that separator, so the vision reason's opening
+# word lands mid-string and would otherwise be trusted as a name.
+_SENTENCE_START_RE = re.compile(r"(?:\A|[.!?]['\")\]]*|\+)\s*\Z")
 
-# Sentence-initial words that a capitalisation rule alone cannot tell from
-# a proper noun. Scan notes open with one of these verbs or adjectives, so
-# stripping them keeps "Iconic approach of the George Washington Bridge"
-# from yielding the landmark "Iconic approach".
+# Verbs and adjectives that scan notes open with, capitalised by sentence
+# case rather than by being part of a name. The regex only chains
+# capitalised words, so a lone opener ("Iconic approach of...") is already
+# refused by the sentence-initial rule below; this list earns its keep on
+# the "lead + generic noun" run. "Rolling Hill" or "The Bridge" is a
+# two-word match that neither rule touches on its own — stripping the
+# lead leaves a single generic word for _GENERIC_PLACE_WORDS to discard,
+# where the intact pair would be a shared landmark between two clips of
+# different hills.
 _LANDMARK_LEAD_WORDS = frozenset("""
     the a an approaching cruising descending climbing fast iconic steady low
     high dynamic sweeping catching closing overtaking entering quiet empty
@@ -253,6 +274,8 @@ def _landmarks(seg: "Segment") -> frozenset[str]:
         is_ref = len(words) == 1 and (
             words[0].isupper() or any(ch.isdigit() for ch in words[0]))
         if len(words) == 1 and words[0].lower() in _GENERIC_PLACE_WORDS:
+            continue
+        if is_ref and words[0] in _NOT_LANDMARK_ACRONYMS:
             continue
         # A lone capitalised word opening a sentence, not covered by the
         # lead-word list and not an acronym, is unknowable: "Ends at the
@@ -1795,22 +1818,18 @@ def select_segments(
             # before returning, so the cut spans the whole ride.
             filtered = _backfill_gaps(filtered, candidates, budget_secs, config)
 
-            # If we have enough, return as-is — after the same
-            # adjacent-duplicate repair the greedy path gets. The
-            # narrative pass picks for story shape and will happily
-            # narrate one landmark twice in a row, so this path needs
-            # the check just as much.
+            # Seed the greedy stage with what the model gave us. When the
+            # narrative already fills every slot the greedy loop and
+            # coverage fill below are no-ops, and the reel goes straight
+            # to the adjacent-duplicate repair at the tail — the same
+            # call, with the same coverage weight, the greedy path gets.
+            # The narrative pass picks for story shape and will happily
+            # narrate one landmark twice in a row, so it needs that check
+            # just as much, and a repair blind to coverage would swap in
+            # a clip on top of the hole the backfill just patched.
             if len(filtered) >= n:
                 filtered.sort(key=lambda s: s.ride_time_secs)
-                picked_ids = {id(f) for f in filtered[:n]}
-                return _repair_adjacent_duplicates(
-                    filtered[:n],
-                    [c for c in candidates if id(c) not in picked_ids],
-                    min_gap, 0.0, fallback_tau,
-                )
-
-            # Otherwise, seed greedy with what Gemini gave us and let it
-            # fill the remaining slots using gap-filling logic below
+                filtered = filtered[:n]
             must_includes = filtered
 
     # ── Similarity-aware greedy ───────────────────────────────
@@ -1892,9 +1911,13 @@ def _repair_adjacent_duplicates(
     only if that candidate clears the bar the rest of the reel already
     meets. By the time 20 clips are chosen from 90, what is left is
     mostly filler, and swapping a strong duplicate for a weak unique shot
-    trades one visible flaw for another. When nothing good enough is
-    available the duplicate is simply dropped, leaving a reel one clip
-    shorter and every clip in it worth watching.
+    trades one visible flaw for another. The bar has two parts: the raw
+    score must match the weakest real clip in the reel, and the effective
+    score against the reel must be non-negative — the same margin the
+    greedy and narrative stages apply, so a candidate they rejected as
+    crowded or redundant cannot get in through the back door. When
+    nothing good enough is available the duplicate is simply dropped,
+    leaving a reel one clip shorter and every clip in it worth watching.
     """
     if len(selected) < 2:
         return selected
@@ -1959,6 +1982,8 @@ def _repair_adjacent_duplicates(
             if at + 1 < len(trial) and _is_adjacent_duplicate(cand, trial[at + 1]):
                 continue
             eff = _effective_score(cand, keep, coverage_weight, fallback_tau)
+            if eff < _GREEDY_MIN_MARGINAL:
+                continue
             if eff > best_eff:
                 best, best_eff = cand, eff
 
@@ -1970,7 +1995,7 @@ def _repair_adjacent_duplicates(
             # "the good ones all sat too close to a pick" point at different
             # knobs when a reel comes back short.
             why = (f"every candidate above score {quality_floor:.2f} was too "
-                   f"close to a pick or repeated one"
+                   f"close to a pick, redundant with one, or repeated one"
                    if cleared_floor else
                    f"no candidate above score {quality_floor:.2f}")
             print(f"  Adjacent duplicate: dropped 1 clip "

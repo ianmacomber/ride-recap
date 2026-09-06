@@ -490,3 +490,53 @@ def test_one_unfixable_pair_does_not_block_other_repairs():
     assert alt in out, "the repairable pair should have been swapped, not dropped"
     assert len(out) == 4
     assert locked_a in out and locked_b in out, "must-includes are untouched"
+
+
+def test_fused_note_opener_is_not_a_landmark():
+    """Candidate fusion joins notes with ' + ', so the vision reason's
+    first word sits mid-string; it must still count as sentence-initial."""
+    from gopro_garmin_pipeline import composer as c
+    a = _vseg("max_speed: 45 km/h (peak) + Smooth roll along the waterfront.",
+              _GWB_A, 1000.0)
+    b = _vseg("max_power: 400 W (peak) + Smooth roll past the marina.",
+              _GWB_B, 1100.0)
+    assert not c._landmarks(a)
+    assert not c._is_adjacent_duplicate(a, b)
+    # A real name after the separator still survives.
+    assert "Hudson River" in c._landmarks(
+        _vseg("max_speed: 45 km/h + Along the Hudson River.", _GWB_A, 0.0))
+
+
+def test_telemetry_units_and_jargon_are_not_landmarks():
+    from gopro_garmin_pipeline import composer as c
+    lm = lambda n: c._landmarks(_vseg(n, _GWB_A, 0.0))  # noqa: E731
+    assert not lm("Pushing 300W on the climb at 25MPH, GPS trace steady.")
+    assert not lm("A KOM effort, holding 90RPM.")
+    assert not c._is_adjacent_duplicate(
+        _vseg("Pushing 300W on the climb.", _GWB_A, 100.0),
+        _vseg("Sustained 300W push through the switchbacks.", _GWB_B, 200.0))
+    # Route refs keep working.
+    assert lm("Riding 9W north past the overlook.") == frozenset({"9W"})
+
+
+def test_repair_does_not_swap_in_a_net_negative_clip():
+    """A candidate the greedy stage rejected as crowded must not enter
+    through the repair, even when its raw score clears the floor."""
+    from gopro_garmin_pipeline import composer as c
+    p = _seg(1000.0, 20.0, 250.0, 2.0, score=9.0, rubric=_PAL_A)
+    p.label = {"notes": "Sweeping bend above the water."}
+    weak = _seg(1600.0, 15.0, 150.0, 0.0, score=2.5, rubric=_PAL_B)
+    weak.label = {"notes": "Quiet stretch of road."}
+    gwb_a = _vseg("Iconic approach beneath the steel tower of the George "
+                  "Washington Bridge", _GWB_A, 2246.0)
+    gwb_b = _vseg("Iconic approach of the George Washington Bridge tower under "
+                  "a clear sky.", _GWB_B, 2413.0)
+    red = _seg(1010.0, 20.0, 250.0, 2.0, score=3.0, rubric=_PAL_A)
+    red.label = {"notes": "Sweeping bend above the water again."}
+
+    keep = [p, weak, gwb_a]
+    assert c._effective_score(red, keep, 1.5, 600.0) < 0.0
+    out = c._repair_adjacent_duplicates(
+        [p, weak, gwb_a, gwb_b], [red], 3.0, 1.5, 600.0)
+    assert red not in out, "a net-negative near-duplicate must not be swapped in"
+    assert len(out) == 3
