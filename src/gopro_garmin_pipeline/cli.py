@@ -922,6 +922,8 @@ def review_candidates(video_dir: Path, fit_file: Path, labels_file: Path | None,
               "or drove home from a different town than the real destination.")
 @click.option("--no-intro", is_flag=True,
               help="Skip the opening title card entirely.")
+@click.option("--no-overlay", is_flag=True,
+              help="Skip realtime telemetry graphics and the recap outro card.")
 @_grade_options
 @_intro_options
 def compose_selected(selections_file: Path, video_dir: Path, fit_file: Path,
@@ -931,6 +933,7 @@ def compose_selected(selections_file: Path, video_dir: Path, fit_file: Path,
                      road: str | None, crew: str | None, lockup: str | None,
                      far_pin: bool = False,
                      no_intro: bool = False,
+                     no_overlay: bool = False,
                      intro_style: str = intro_styles.DEFAULT_STYLE,
                      intro_reveal_secs: float = 0.0,
                      grade_look: str = "none", grade_strength: int = 35,
@@ -973,6 +976,7 @@ def compose_selected(selections_file: Path, video_dir: Path, fit_file: Path,
             subtitle=fields["subtitle"], road=fields["road"],
             crew=fields["crew"], lockup=lockup, far_pin=far_pin,
             include_intro=not no_intro,
+            include_overlay=not no_overlay,
             intro_style=intro_style, intro_reveal_secs=intro_reveal_secs,
             grade_look=grade_look, grade_strength=grade_strength / 100,
             grade_wb=grade_wb,
