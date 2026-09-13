@@ -808,13 +808,25 @@ def _candidates_from_highlights(
     return candidates
 
 
+# Strava candidate scoring. Popularity is log(star_count) normalized against
+# this ride's most-starred segment (0..1), scaled by _STRAVA_POPULARITY_WEIGHT.
+# A personal star adds _STRAVA_PERSONAL_STAR_BOOST — equal to the full
+# popularity weight, so a starred segment outranks the most popular unstarred
+# one without dominating by an unbounded margin.
+_STRAVA_POPULARITY_WEIGHT = 4.0
+_STRAVA_PERSONAL_STAR_BOOST = _STRAVA_POPULARITY_WEIGHT
+
 def _candidates_from_strava(
     strava_efforts: list, ride: RideData, synced_clips: list[SyncedClip], config: ComposerConfig,
 ) -> list[Segment]:
     """Generate candidates from Strava segment efforts.
 
-    Score: log(star_count) popularity bonus + telemetry at midpoint.
+    Score: per-ride normalized popularity + personal-star boost + telemetry
+    at the segment midpoint. All segments on the activity are candidates;
+    the athlete's own stars are a score signal, never a filter.
     """
+    max_stars = max((e.star_count for e in strava_efforts), default=0)
+
     candidates = []
     for effort in strava_efforts:
         ride_secs = effort.start_time_secs + effort.elapsed_time_secs / 2
@@ -827,7 +839,13 @@ def _candidates_from_strava(
         if clip_name is None:
             continue
 
-        star_score = math.log(max(1, effort.star_count))
+        popularity = (
+            math.log(max(1, effort.star_count)) / math.log(max_stars)
+            if max_stars > 1 else 0.0
+        )
+        star_score = popularity * _STRAVA_POPULARITY_WEIGHT
+        if effort.personal_star:
+            star_score += _STRAVA_PERSONAL_STAR_BOOST
         tel_score = _telemetry_score_at(ride, ride_secs)
         score = star_score + tel_score
 
@@ -847,6 +865,7 @@ def _candidates_from_strava(
                 "video_secs": video_secs,
                 "strava_segment_id": effort.segment_id,
                 "star_count": effort.star_count,
+                "personal_star": effort.personal_star,
             },
         ))
 
@@ -2052,6 +2071,48 @@ def concatenate_clips(clip_paths: list[Path], output_path: Path) -> Path:
     return output_path
 
 
+def _render_plain_segment(
+    source: Path,
+    output: Path,
+    *,
+    layout: str,
+    start_offset: float,
+    duration: float,
+    portrait_crop_bias: float,
+    grade: str,
+    encode_preset: str,
+) -> None:
+    """Render a trimmed segment without telemetry graphics."""
+    from .burn_overlay import _encode_args
+    from .gopro_meta import extract_metadata
+
+    clip = extract_metadata(source)
+    cmd = ["ffmpeg", "-y", "-ss", f"{start_offset:.4f}", "-i", str(source)]
+    filters: list[str] = []
+    base = "[0:v]"
+    if layout == "portrait":
+        out_width = int(clip.height * 9 / 16)
+        out_width -= out_width % 2
+        max_x = clip.width - out_width
+        center_x = max_x / 2
+        crop_x = int(center_x + portrait_crop_bias * center_x)
+        crop_x = max(0, min(crop_x, max_x))
+        filters.append(f"[0:v]crop={out_width}:{clip.height}:{crop_x}:0[base]")
+        base = "[base]"
+    if grade:
+        filters.append(f"{base}{grade}[graded]")
+        base = "[graded]"
+    if filters:
+        filters.append(f"{base}null[out]")
+        cmd += ["-filter_complex", ";".join(filters), "-map", "[out]"]
+    else:
+        cmd += ["-map", "0:v:0"]
+    cmd += ["-map", "0:a?", "-t", f"{duration:.2f}"]
+    cmd += _encode_args(encode_preset)
+    cmd += ["-hide_banner", "-loglevel", "error", "-nostats", str(output)]
+    subprocess.run(cmd, check=True)
+
+
 def _anchored_cut(v_start: float, v_end: float, anchor: float,
                   trim: float, intro_floor: float = 0.0) -> tuple[float, float]:
     """Anchor-centered cut window, clamped to the rated span [v_start, v_end].
@@ -2148,6 +2209,7 @@ def compose_from_selections(
     grade_look: str = "none",
     grade_strength: float = 0.35,
     grade_wb: str = "off",
+    include_overlay: bool = True,
 ) -> Path:
     """Compose a highlight video from a selections file.
 
@@ -2262,34 +2324,45 @@ def compose_from_selections(
             cut_start = v_start
             duration = max(v_end - v_start, seg_intro)
 
-        cache_key = seg["clip_name"]
-        if cache_key not in renderers:
-            adjusted_clip = clip_by_name.get(seg["clip_name"])
-            renderer, _, _ = build_renderer(
-                source, str(fit_path), offset, layout,
-                ride=ride, clip=adjusted_clip,
-                lockup=lockup_string,
-            )
-            renderers[cache_key] = renderer
+        if include_overlay:
+            cache_key = seg["clip_name"]
+            if cache_key not in renderers:
+                adjusted_clip = clip_by_name.get(seg["clip_name"])
+                renderer, _, _ = build_renderer(
+                    source, str(fit_path), offset, layout,
+                    ride=ride, clip=adjusted_clip,
+                    lockup=lockup_string,
+                )
+                renderers[cache_key] = renderer
 
-        burn_overlay(
-            str(source), str(fit_path), str(out),
-            offset=offset,
-            layout=layout,
-            start_offset=cut_start,
-            trim_duration=duration,
-            renderer=renderers[cache_key],
-            ride=ride,
-            encode_preset=encode_preset,
-            portrait_crop_bias=float(seg.get("portrait_crop_bias", 0.0)),
-            intro_secs=seg_intro,
-            grade=grades.get(i, ""),
-            intro_style=intro_style,
-            intro_reveal_secs=intro_reveal_secs,
-        )
+            burn_overlay(
+                str(source), str(fit_path), str(out),
+                offset=offset,
+                layout=layout,
+                start_offset=cut_start,
+                trim_duration=duration,
+                renderer=renderers[cache_key],
+                ride=ride,
+                encode_preset=encode_preset,
+                portrait_crop_bias=float(seg.get("portrait_crop_bias", 0.0)),
+                intro_secs=seg_intro,
+                grade=grades.get(i, ""),
+                intro_style=intro_style,
+                intro_reveal_secs=intro_reveal_secs,
+            )
+        else:
+            _render_plain_segment(
+                source, out,
+                layout=layout,
+                start_offset=cut_start,
+                duration=duration,
+                portrait_crop_bias=float(seg.get("portrait_crop_bias", 0.0)),
+                grade=grades.get(i, ""),
+                encode_preset=encode_preset,
+            )
         clips.append(out)
 
-    if include_outro and clips:
+    if include_outro and include_overlay and clips:
         from .intro_outro import (
             compute_ride_stats, crossfade_outro, probe_segment_params, render_outro,
         )

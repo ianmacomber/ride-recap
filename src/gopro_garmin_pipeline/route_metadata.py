@@ -294,7 +294,8 @@ def overpass_named_ways(bbox: tuple[float, float, float, float]) -> list[dict]:
             last_err = exc
             continue
     else:
-        raise RuntimeError(f"Overpass failed on all endpoints: {last_err}")
+        print(f"  named-ways lookup failed: {last_err}")
+        return []
 
     ways = []
     for el in data.get("elements", []):
@@ -436,7 +437,8 @@ def overpass_named_parks(bbox: tuple[float, float, float, float]) -> list[dict]:
             last_err = exc
             continue
     else:
-        raise RuntimeError(f"Overpass parks failed: {last_err}")
+        print(f"  named-parks lookup failed: {last_err}")
+        return []
 
     parks = []
     for el in data.get("elements", []):

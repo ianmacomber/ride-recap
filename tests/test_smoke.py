@@ -73,9 +73,10 @@ def test_explicit_thresholds_win_over_derivation():
     assert s.power_spike_threshold == pytest.approx(999)
 
 
-def test_osm_disabled_without_contact_email():
+def test_osm_disabled_without_contact_email(monkeypatch):
     """No contact address → no OSM traffic. Nominatim's policy requires one."""
-    s = Settings(_env_file=None)
+    monkeypatch.delenv("OSM_CONTACT_EMAIL", raising=False)
+    s = Settings(_env_file=None, osm_contact_email="")
     assert s.osm_contact_email == ""
 
 

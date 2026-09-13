@@ -6,6 +6,13 @@ from ..utils import parse_json_response
 from .base import _REQUEST_TIMEOUT_S
 
 
+def _afc_disabled(types):
+    """Build a GenerateContentConfig kwarg set that disables automatic function calling."""
+    return {
+        "automatic_function_calling": types.AutomaticFunctionCallingConfig(disable=True)
+    }
+
+
 class GeminiAdapter:
     """google-genai backed adapter. Behavior matches the pre-adapter call sites."""
 
@@ -35,6 +42,7 @@ class GeminiAdapter:
                 http_options=types.HttpOptions(
                     timeout=int(_REQUEST_TIMEOUT_S * 1000),
                 ),
+                **_afc_disabled(types),
             ),
         )
         result = parse_json_response(response.text)
@@ -59,6 +67,7 @@ class GeminiAdapter:
                 http_options=types.HttpOptions(
                     timeout=int(_REQUEST_TIMEOUT_S * 1000),
                 ),
+                **_afc_disabled(types),
             ),
         )
         result = parse_json_response(response.text)
@@ -82,6 +91,7 @@ class GeminiAdapter:
         config_kwargs: dict = {
             "temperature": temperature,
             "max_output_tokens": max_output_tokens,
+            **_afc_disabled(types),
         }
         if system:
             # prompt_eval path — system instruction, no thinking budget

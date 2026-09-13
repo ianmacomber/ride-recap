@@ -70,12 +70,16 @@ _CREW_CACHE_PATH = Path.home() / ".ride_recap_cache" / "last_crew.txt"
 
 def _find_fits(folder: Path) -> list[Path]:
     """All FIT files in a ride folder, sorted so the first pick is deterministic."""
-    return sorted(list(folder.glob("*.fit")) + list(folder.glob("*.FIT")))
+    # Windows filesystems are case-insensitive, so *.fit and *.FIT match the
+    # same file; dedupe by name to avoid listing it twice.
+    by_name = {p.name: p for p in list(folder.glob("*.fit")) + list(folder.glob("*.FIT"))}
+    return sorted(by_name.values())
 
 
 def _find_mp4s(folder: Path) -> list[Path]:
     """All GoPro .MP4 chapters in a ride folder, either filename case."""
-    return list(folder.glob("*.MP4")) + list(folder.glob("*.mp4"))
+    by_name = {p.name: p for p in list(folder.glob("*.MP4")) + list(folder.glob("*.mp4"))}
+    return list(by_name.values())
 
 
 def _read_last_crew() -> str:
@@ -926,6 +930,10 @@ def review_candidates(video_dir: Path, fit_file: Path, labels_file: Path | None,
               help="Anchor the recap end pin at the farthest point reached (the ride "
               "apex/turnaround) instead of where the ride ended. Use when you trained "
               "or drove home from a different town than the real destination.")
+@click.option("--no-intro", is_flag=True,
+              help="Skip the opening title card entirely.")
+@click.option("--no-overlay", is_flag=True,
+              help="Skip realtime telemetry graphics and the recap outro card.")
 @_grade_options
 @_intro_options
 def compose_selected(selections_file: Path, video_dir: Path, fit_file: Path,
@@ -934,6 +942,8 @@ def compose_selected(selections_file: Path, video_dir: Path, fit_file: Path,
                      origin: str | None, destination: str | None, subtitle: str | None,
                      road: str | None, crew: str | None, lockup: str | None,
                      far_pin: bool = False,
+                     no_intro: bool = False,
+                     no_overlay: bool = False,
                      intro_style: str = intro_styles.DEFAULT_STYLE,
                      intro_reveal_secs: float = 0.0,
                      grade_look: str = "none", grade_strength: int = 35,
@@ -975,6 +985,8 @@ def compose_selected(selections_file: Path, video_dir: Path, fit_file: Path,
             origin=fields["origin"], destination=fields["destination"],
             subtitle=fields["subtitle"], road=fields["road"],
             crew=fields["crew"], lockup=lockup, far_pin=far_pin,
+            include_intro=not no_intro,
+            include_overlay=not no_overlay,
             intro_style=intro_style, intro_reveal_secs=intro_reveal_secs,
             grade_look=grade_look, grade_strength=grade_strength / 100,
             grade_wb=grade_wb,
