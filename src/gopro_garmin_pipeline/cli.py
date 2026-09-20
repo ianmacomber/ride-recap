@@ -65,7 +65,7 @@ def _intro_options(fn):
     return fn
 
 
-_CREW_CACHE_PATH = Path.home() / ".ride_recap_cache" / "last_crew.txt"
+_DEFAULT_CREW = "SOLO"
 
 
 def _find_fits(folder: Path) -> list[Path]:
@@ -76,45 +76,6 @@ def _find_fits(folder: Path) -> list[Path]:
 def _find_mp4s(folder: Path) -> list[Path]:
     """All GoPro .MP4 chapters in a ride folder, either filename case."""
     return list(folder.glob("*.MP4")) + list(folder.glob("*.mp4"))
-
-
-def _read_last_crew() -> str:
-    """Return the crew label used on the previous ride, or 'SOLO' if none."""
-    try:
-        return _CREW_CACHE_PATH.read_text().strip() or "SOLO"
-    except OSError:
-        return "SOLO"
-
-
-def _write_last_crew(crew: str) -> None:
-    try:
-        _CREW_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _CREW_CACHE_PATH.write_text(crew + "\n")
-    except OSError:
-        pass
-
-
-def resolve_crew(explicit: str | None) -> str:
-    """Pick the crew label for this ride.
-
-    Resolution order: explicit CLI value → interactive prompt (TTY only,
-    default = last-used) → cached last-used (non-TTY fallback). The
-    chosen value is cached so the next ride pre-fills with it.
-    """
-    import sys
-
-    if explicit:
-        _write_last_crew(explicit)
-        return explicit
-
-    default = _read_last_crew()
-    if not sys.stdin.isatty():
-        return default
-
-    crew = click.prompt("Crew", default=default, show_default=True)
-    crew = (crew or default).strip() or default
-    _write_last_crew(crew)
-    return crew
 
 
 def prompt_recap_fields(
@@ -131,8 +92,8 @@ def prompt_recap_fields(
     Defaults come from compute_route_metadata (start place, farthest
     place, dominant named road) and the design tokens (subtitle).
     Explicit CLI overrides bypass the prompt for that field. Non-TTY
-    runs accept all derived defaults silently. The chosen ``crew`` is
-    cached for the next ride.
+    runs accept all derived defaults silently. Nothing is carried over
+    between rides — crew and subtitle are asked fresh every run.
 
     Returns ``{"origin": ..., "destination": ..., "road": ...,
     "subtitle": ..., "crew": ...}`` — empty string means "no value,
@@ -197,7 +158,7 @@ def prompt_recap_fields(
 
     road_str = _resolve("Road  ", road, derived_road)
     subtitle_str = _resolve("Saying", subtitle, _DEFAULT_OUTRO_SUBTITLE)
-    crew_str = resolve_crew(crew)
+    crew_str = _resolve("Crew  ", crew, _DEFAULT_CREW)
 
     return {
         "origin": origin_str.strip(),
@@ -431,7 +392,7 @@ def burn(video_path: Path, fit_file: Path, output: Path | None, offset: float,
               "Auto-derived from GPS if omitted.")
 @click.option("--crew", default=None,
               help="Right side of the footer lockup (e.g. 'SOLO'). If omitted, "
-              "prompts on a TTY using the last-used value as the default.")
+              "prompts on a TTY (default 'SOLO'); never carried over between rides.")
 @click.option("--lockup", default=None,
               help="Full in-segment bottom-band string. Overrides origin/road for "
               "the per-clip HUD only; recap card still uses --origin/--road/--crew.")
@@ -567,7 +528,7 @@ def compose(video_dir: Path, fit_file: Path, labels_file: Path | None, output_di
               "(most-traveled named road or route ref) if omitted.")
 @click.option("--crew", default=None,
               help="Right side of the footer lockup. If omitted, prompts on a TTY "
-              "using the last-used value as the default.")
+              "(default 'SOLO'); never carried over between rides.")
 @click.option("--lockup", default=None,
               help="Full in-segment bottom-band string. Overrides origin/road for "
               "the per-clip HUD only; recap card still uses --origin/--road/--crew.")
@@ -919,7 +880,7 @@ def review_candidates(video_dir: Path, fit_file: Path, labels_file: Path | None,
               help="Lockup left side. Auto-derived from GPS if omitted.")
 @click.option("--crew", default=None,
               help="Lockup right side. If omitted, prompts on a TTY using the "
-              "last-used value as the default.")
+              "(default 'SOLO'); never carried over between rides.")
 @click.option("--lockup", default=None,
               help="Full in-segment bottom-band string. Overrides per-clip HUD only.")
 @click.option("--far-pin", is_flag=True,
