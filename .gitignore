@@ -26,6 +26,7 @@ src/gopro_garmin_pipeline/design/proposals/
 .gemini_cache/
 .openai_cache/
 .local_cache/
+.embed_cache/
 moments.json
 ride_labels.json
 .vscode

@@ -541,3 +541,60 @@ def test_repair_does_not_swap_in_a_net_negative_clip():
         [p, weak, gwb_a, gwb_b], [red], 3.0, 1.5, 600.0)
     assert red not in out, "a net-negative near-duplicate must not be swapped in"
     assert len(out) == 3
+
+
+def _embed(seg, *vecs):
+    """Give a segment unit-vector frame embeddings on a fixed ride scale."""
+    import numpy as np
+    from gopro_garmin_pipeline.composer import FrameSimScale
+    e = np.array(vecs, dtype=np.float32)
+    seg.frame_embeddings = e / np.linalg.norm(e, axis=1, keepdims=True)
+    seg.frame_sim_scale = FrameSimScale(lo=0.5, hi=0.9, dup=0.8)
+    return seg
+
+
+def test_frame_embeddings_override_rubric():
+    """Identical rubrics, different pictures: embeddings say different."""
+    from gopro_garmin_pipeline import composer as c
+    a = _embed(_vseg("Approaching the George Washington Bridge", _GWB_A, 0.0),
+               [1, 0, 0])
+    b = _embed(_vseg("Under the George Washington Bridge tower", _GWB_A, 60.0),
+               [0.3, 1, 0])
+    assert c._vis_sim(a, b) == 0.0          # cos 0.29, below the ride median
+    assert not c._is_adjacent_duplicate(a, b)
+    twin = _embed(_vseg("George Washington Bridge again", _PAL_A, 90.0),
+                  [0.1, 1, 0], [1, 0.05, 0])  # best frame pair matches a
+    assert c._vis_sim(a, twin) == 1.0
+    assert c._is_adjacent_duplicate(a, twin)  # rubrics differ; frames don't
+
+
+def test_swap_replaces_redundant_pick_but_not_must_include():
+    from gopro_garmin_pipeline import composer as c
+    first = _seg(1000, 15, 200, 0, score=6.0)
+    repeat = _seg(1040, 15, 200, 0, score=6.0)    # same riding, 40s later
+    fresh = _seg(3000, 30, 50, -5, score=5.5)      # different riding, unused
+    out = c._swap_improve([first, repeat], [first, repeat, fresh],
+                          8.0, 0.0, _TAU)
+    assert fresh in out and len(out) == 2
+    first.label = {"must_include": True}
+    repeat.label = {"must_include": True}
+    out = c._swap_improve([first, repeat], [first, repeat, fresh],
+                          8.0, 0.0, _TAU)
+    assert out == [first, repeat]
+
+
+def test_liveness_power_only_excuses_slowness_uphill(monkeypatch):
+    """9 mph at 230 W: a grind uphill, but pulling away from a light on the flat."""
+    from gopro_garmin_pipeline import composer as c
+    from gopro_garmin_pipeline.fit_parser import RideData
+    from gopro_garmin_pipeline.utils import MS_TO_MPH
+
+    ride = RideData()
+    monkeypatch.setattr(RideData, "has_power", property(lambda self: True))
+    monkeypatch.setattr(c, "_window_median", lambda r, t, f: {
+        "speed": 9.0 / MS_TO_MPH, "power": 230.0}[f])
+    monkeypatch.setattr(c, "_window_grade_pct", lambda r, t: 0.5)
+    flat = c._liveness_penalty(ride, 0.0)
+    monkeypatch.setattr(c, "_window_grade_pct", lambda r, t: 5.0)
+    assert c._liveness_penalty(ride, 0.0) == 0.0
+    assert flat > 2.5

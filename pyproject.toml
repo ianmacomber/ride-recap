@@ -35,6 +35,7 @@ dependencies = [
     "requests>=2.31",
     "timezonefinder>=6.0",
     "tzlocal>=5.0",
+    "onnxruntime>=1.18",  # DINOv2 frame embeddings for visual similarity
 ]
 
 [project.urls]

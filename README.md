@@ -251,8 +251,8 @@ redundancy = exp(−Δt / 120s) · (0.65 · kin_sim + 0.35 · vis_sim)
 ```
 
 `kin_sim` compares speed, power and gradient, each normalised by the spread that
-reads as a different kind of riding. `vis_sim` compares the vision model's five
-rubric axes. Two clips suppress each other only when they are close **and**
+reads as a different kind of riding. `vis_sim` compares what is actually in the
+frames — more on that [below](#what-the-frames-actually-show). Two clips suppress each other only when they are close **and**
 alike, so the metric separates a climb from the descent off its summit
 (`kin_sim` 0.017) while still recognising two grinds up the same hill as the
 same thing (`kin_sim` 0.772).
@@ -295,8 +295,36 @@ telemetry at all; those pairs fall back to the ride-span time decay this used
 before — the old behaviour exactly, not an approximation of it. A ride with no
 power meter is fine: power reads as 0 W on both sides of every comparison,
 which is correct, since two clips that both lack power should not look
-*dissimilar* over it. A candidate the vision model never scored is fine too —
+*dissimilar* over it. A candidate with no visual comparison is fine too —
 that only makes `vis_sim` neutral, and the telemetry still does its work.
+
+### What the frames actually show
+
+`vis_sim` used to compare the vision model's five rubric axes, and that was a
+category error. The rubric says how *good* a frame is, not what is in it: a
+cliff descent and a bridge walkway that both score "8 scenery" read as twins.
+On 96 pairs I judged by hand, the rubric told repeats from different shots at
+AUC 0.68. That's a coin with opinions.
+
+Now each candidate gets three frames (anchor, ±1.5 s) embedded with DINOv2-small,
+and a pair's similarity is the best cosine of the 3×3 frame pairs. Same 96
+pairs: AUC 0.98. Raw cosine on POV footage runs high for everything — bars,
+road and horizon are in every frame — so it is rescaled to the ride's own
+spread: the median pair on the ride maps to 0, the 97th percentile to 1.
+"Alike" always means alike *for this ride*.
+
+The model is 88 MB of ONNX, too big to vendor, so the first run downloads it
+once to `~/.cache/gopro-garmin/models` from a pinned Hugging Face revision and
+checks its SHA-256. Embeddings are read from the `.LRV` proxy when there is one
+and cache under `<date>/.embed_cache/`. If any of that fails — no network, no
+frames — `vis_sim` quietly falls back to the rubric.
+
+Better similarity only helps if something acts on it, and every selection stage
+judges a clip against what was picked *before* it. A 5.8 that mostly repeats its
+neighbour survives at ~2.5 while a fresh 5.0 sits unused. So after selection
+there is a swap pass: each pick is scored against the whole reel, both directions
+in time, and replaced when an unused candidate beats it by at least a point.
+Must-include clips are never swapped out.
 
 ### Two clips of one bridge, back to back
 
@@ -311,17 +339,15 @@ is just going over the GWB; it looks the same anywhere on it.
 So after selection, the chronologically ordered reel gets one repair pass. Two
 consecutive cuts are a duplicate when they **name the same landmark** — proper
 nouns pulled out of the vision model's own note, since the scan prompt does not
-emit a structured place field — **and** their rubrics are near-identical
-(`vis_sim` > 0.85). Extraction errs toward missing a landmark rather than
+emit a structured place field — **and** their frames are near-identical (above
+the ride's 93rd-percentile pair, or `vis_sim` > 0.85 on the rubric fallback). Extraction errs toward missing a landmark rather than
 inventing one: a lone capitalised word opening a sentence is not treated as a
 place, because "Ends at the pier" and "Palisades overlook" are the same shape
 and only one of them is a landmark. Missing one lets a repeat through; inventing
 one drops a clip that belonged in the reel. Both halves are needed. The landmark alone would suppress
 the Palisades and River Road pairs, which share a road and are genuinely
-different shots of it; on the reel this was tuned against, the bridge pair
-scored 0.914 while those two scored 0.743 and 0.789. The rubric is what
-distinguishes a uniform place from a varied one, so no per-landmark
-classification is needed.
+different shots of it. The frames are what distinguish a uniform place from a
+varied one, so no per-landmark classification is needed.
 
 The later clip of an offending pair is swapped for the best remaining candidate
 that introduces no new adjacency — but only one that clears the quality floor
@@ -444,6 +470,7 @@ src/gopro_garmin_pipeline/
   gemini_scan.py      # Two-pass vision scan (coarse regions → fine rubric)
   models/             # Gemini, OpenAI, and local OpenAI-compatible adapters
   composer.py         # Candidate generation, fusion, selection, composition
+  frame_embed.py      # DINOv2-small (ONNX) frame embeddings → visual similarity
   burn_overlay.py     # The 5-element HUD, landscape + portrait
   grade.py            # Optional per-shot correction + shared looks (--wb / --look)
   intro_outro.py      # Opening title card, outro recap card

@@ -80,6 +80,23 @@ _VIS_SIM_UNKNOWN = 0.5         # neutral when a candidate has no rubric
 # (0.743 and 0.789) are genuinely different shots of one place.
 _ADJACENT_VIS_THRESHOLD = 0.85
 
+# Frame-embedding similarity (frame_embed.py) replaces the rubric whenever
+# both clips have embeddings. Raw DINOv2 cosine on POV footage sits around
+# 0.5 even for unrelated shots (bars, road, horizon in every frame), so it
+# is rescaled against the ride's own pairwise spread: the median pair maps
+# to 0 and the _FRAME_SIM_HI_PCT pair to 1. A shared landmark counts as an
+# adjacent duplicate above the _FRAME_DUP_PCT pair. Calibrated on 96
+# hand-judged pairs from one ride (best balanced accuracy at p92-93).
+_FRAME_SIM_LO_PCT = 50.0
+_FRAME_SIM_HI_PCT = 97.0
+_FRAME_DUP_PCT = 93.0
+
+# Swap pass after selection: a pick is replaced when an unused candidate
+# beats it on effective score (judged against the rest of the reel, in
+# both directions in time) by at least this many points. The margin keeps
+# the vision model's story choices unless the alternative is clearly better.
+_SWAP_MARGIN = 1.0
+
 # Coverage term: rewards picks that open up the biggest untouched stretch
 # of the timeline, so a chronological reel still spans the whole ride.
 # Traded off directly against quality — raise it for coverage, lower it
@@ -117,6 +134,11 @@ _LIVENESS_SPEED_OK = 14.0     # mph — at/above, no speed-based deadness
 _LIVENESS_POWER_LOW = 30.0    # W — at/below, fully "coasting"
 _LIVENESS_POWER_OK = 130.0    # W — at/above, clearly working
 _LIVENESS_MAX_PENALTY = 4.0   # score points subtracted for a fully-dead clip
+# Power only excuses low speed on a climb. On the flat, hard pedalling at
+# 9 mph is pulling away from a light in traffic, and it looks as slow as a
+# coast. The excuse ramps in between these grades.
+_LIVENESS_GRADE_FLAT = 1.0    # % — at/below, power excuses nothing
+_LIVENESS_GRADE_CLIMB = 3.0   # % — at/above, power fully excuses slowness
 _LIVENESS_WINDOW_HALF_SECS = 3.0
 
 
@@ -161,12 +183,35 @@ def _kin_sim(a: "Segment", b: "Segment") -> float | None:
     return math.exp(-d)
 
 
-def _vis_sim(a: "Segment", b: "Segment") -> float:
-    """Rubric similarity in [0, 1] over the vision model's visual axes.
+@dataclass(frozen=True)
+class FrameSimScale:
+    """Ride-relative calibration for raw frame-embedding cosine."""
+    lo: float   # median pair on the ride → similarity 0
+    hi: float   # _FRAME_SIM_HI_PCT pair → similarity 1
+    dup: float  # raw cosine above which a shared landmark is a duplicate
 
-    Neutral (_VIS_SIM_UNKNOWN) when either side was never rubric-scored,
-    so a missing rubric neither excuses nor condemns a candidate.
+
+def _frame_sim(a: "Segment", b: "Segment") -> float | None:
+    """Raw best-of-frames cosine, or None when either side is unembedded."""
+    ea, eb = a.frame_embeddings, b.frame_embeddings
+    if ea is None or eb is None or a.frame_sim_scale is None:
+        return None
+    return float((ea @ eb.T).max())
+
+
+def _vis_sim(a: "Segment", b: "Segment") -> float:
+    """Visual similarity in [0, 1].
+
+    From frame embeddings when both clips have them, rescaled to the
+    ride's own spread. Otherwise from the vision model's rubric axes,
+    which measure how good a frame is rather than what is in it, so they
+    are a weak stand-in. Neutral (_VIS_SIM_UNKNOWN) when either side was
+    never rubric-scored, so a missing rubric neither excuses nor condemns.
     """
+    frame = _frame_sim(a, b)
+    if frame is not None:
+        scale = a.frame_sim_scale
+        return min(1.0, max(0.0, (frame - scale.lo) / (scale.hi - scale.lo)))
     ra, rb = a.rubric or {}, b.rubric or {}
     if not ra or not rb:
         return _VIS_SIM_UNKNOWN
@@ -340,7 +385,12 @@ def _is_adjacent_duplicate(a: "Segment", b: "Segment") -> bool:
     needed: uniform places produce near-identical rubrics and varied
     ones do not.
     """
-    return _shares_landmark(a, b) and _vis_sim(a, b) > _ADJACENT_VIS_THRESHOLD
+    if not _shares_landmark(a, b):
+        return False
+    frame = _frame_sim(a, b)
+    if frame is not None:
+        return frame > a.frame_sim_scale.dup
+    return _vis_sim(a, b) > _ADJACENT_VIS_THRESHOLD
 
 
 def _redundancy(
@@ -471,6 +521,11 @@ class Segment:
     # {speed_mph, power_w, grade_pct} sampled around the anchor. Drives the
     # similarity-aware redundancy term. Empty when telemetry is unavailable.
     telemetry_features: dict = field(default_factory=dict)
+    # (k, 384) DINOv2 embeddings of frames around the anchor, plus the
+    # ride-wide scale they are compared on. None → rubric fallback.
+    frame_embeddings: object = field(default=None, repr=False, compare=False)
+    frame_sim_scale: FrameSimScale | None = field(
+        default=None, repr=False, compare=False)
 
     @property
     def duration(self) -> float:
@@ -673,14 +728,47 @@ def _populate_telemetry_features(
         print(f"  Telemetry features: {filled}/{len(candidates)} candidates")
 
 
+def attach_frame_embeddings(candidates: list["Segment"], video_dir: Path) -> None:
+    """Embed each candidate's frames and set the ride's similarity scale.
+
+    In place. The scale's percentiles come from every embedded pair in
+    this pool, so similarity always means "alike for this ride". Leaves
+    candidates unembedded (rubric fallback) when the model or frames are
+    unavailable, or when the pool is too small to calibrate on.
+    """
+    try:
+        import numpy as np
+        from .frame_embed import embed_candidates
+        emb = embed_candidates(video_dir, candidates)
+    except Exception as exc:
+        print(f"  Frame embeddings unavailable ({exc.__class__.__name__}: "
+              f"{exc}); visual similarity falls back to the rubric")
+        return
+    embedded = [c for c in candidates if id(c) in emb]
+    if len(embedded) < 10:
+        return
+    sims = [float((emb[id(a)] @ emb[id(b)].T).max())
+            for i, a in enumerate(embedded) for b in embedded[i + 1:]]
+    lo, hi, dup = np.percentile(
+        sims, [_FRAME_SIM_LO_PCT, _FRAME_SIM_HI_PCT, _FRAME_DUP_PCT])
+    scale = FrameSimScale(lo=float(lo), hi=float(max(hi, lo + 1e-3)), dup=float(dup))
+    for c in embedded:
+        c.frame_embeddings = emb[id(c)]
+        c.frame_sim_scale = scale
+    print(f"  Frame embeddings: {len(embedded)}/{len(candidates)} candidates "
+          f"(ride scale p50={scale.lo:.2f} p97={scale.hi:.2f} dup>{scale.dup:.2f})")
+
+
 def _liveness_penalty(ride: RideData, ride_secs: float) -> float:
-    """Penalty in [0, _LIVENESS_MAX_PENALTY] for low-speed AND low-power footage.
+    """Penalty in [0, _LIVENESS_MAX_PENALTY] for slow footage that isn't a climb.
 
     Combines telemetry with vision-scored candidates so a beautiful but
-    dead-slow coast (e.g. 5-7 mph at 0 W) is demoted. Requires BOTH speed
-    and power to be low — a descent (fast, no power) or a climb (slow, high
-    power) scores 0. Neutral (0) when telemetry is missing or the ride has
-    no power meter (can't judge effort, so don't guess).
+    dead-slow coast (e.g. 5-7 mph at 0 W) is demoted. A descent (fast, no
+    power) scores 0, and so does a climb (slow, high power, uphill). Slow
+    and hard on the flat — accelerating out of a stop — is penalised like
+    a coast: the footage looks just as slow. Neutral (0) when telemetry is
+    missing or the ride has no power meter (can't judge effort, so don't
+    guess). Missing grade keeps the old rule, where power alone excuses.
     """
     if not ride.has_power:
         return 0.0
@@ -694,8 +782,13 @@ def _liveness_penalty(ride: RideData, ride_secs: float) -> float:
                     (_LIVENESS_SPEED_OK - _LIVENESS_SPEED_LOW))
     coast = _clamp01((_LIVENESS_POWER_OK - power_w) /
                      (_LIVENESS_POWER_OK - _LIVENESS_POWER_LOW))
-    # Product → penalise only when BOTH are low. Either one healthy → ~0.
-    return _LIVENESS_MAX_PENALTY * slow * coast
+    grade = _window_grade_pct(ride, ride_secs)
+    climbing = 1.0 if grade is None else _clamp01(
+        (grade - _LIVENESS_GRADE_FLAT) /
+        (_LIVENESS_GRADE_CLIMB - _LIVENESS_GRADE_FLAT))
+    # Effort excuses slowness only to the extent the road is uphill.
+    excused = (1.0 - coast) * climbing
+    return _LIVENESS_MAX_PENALTY * slow * (1.0 - excused)
 
 
 def _apply_liveness_penalty(candidates: list[Segment], ride: RideData) -> None:
@@ -1385,6 +1478,11 @@ def _generate_candidates(
     # fusion/fillers so every candidate the selectors see carries an
     # effort-aware score. Label/must-include picks are exempt inside.
     _apply_liveness_penalty(fused, ride)
+
+    # Visual similarity for the redundancy term and the adjacent-duplicate
+    # check: embed the frames of every candidate the selectors will see.
+    if synced_clips:
+        attach_frame_embeddings(fused, synced_clips[0].clip.path.parent)
     return fused
 
 
@@ -1909,9 +2007,63 @@ def select_segments(
     )
 
     selected.sort(key=lambda s: s.ride_time_secs)
+    # No coverage term: span is the narrative's and the backfill's job,
+    # and with it the swap trades good clips for weak ones in empty
+    # stretches (on one test ride it pulled a 3.5 in ahead of the opener).
+    selected = _swap_improve(selected, candidates, min_gap, 0.0, fallback_tau)
     selected = _repair_adjacent_duplicates(
         selected, pool, min_gap, config.coverage_weight, fallback_tau)
     return selected[:n]
+
+
+def _swap_improve(
+    selected: list["Segment"], candidates: list["Segment"], min_gap: float,
+    coverage_weight: float, fallback_tau: float,
+) -> list["Segment"]:
+    """Replace picks that an unused candidate clearly beats.
+
+    Every earlier stage judges a clip only against what was picked before
+    it: the narrative filter keeps a vision-model pick unless its effective
+    score goes negative, so a 5.8 clip that mostly repeats its neighbour
+    survives at ~2.5 even when a fresh 5.0 sits unused elsewhere. This
+    pass scores each pick against the *whole* reel (both directions in
+    time) with the same ``_effective_score`` the greedy uses, and swaps in
+    the best unused candidate when it wins by ``_SWAP_MARGIN``. One swap
+    per round, the biggest gain first, until nothing clears the margin.
+    Must-include clips are never swapped out.
+    """
+    selected = list(selected)
+    used = {id(s) for s in selected}
+    for _ in range(2 * len(selected)):
+        best_gain, best_swap = _SWAP_MARGIN, None
+        for i, seg in enumerate(selected):
+            if _is_must_include(seg.label or {}):
+                continue
+            others = selected[:i] + selected[i + 1:]
+            current = _effective_score(seg, others, coverage_weight, fallback_tau)
+            for cand in candidates:
+                if id(cand) in used:
+                    continue
+                if any(abs(cand.ride_time_secs - o.ride_time_secs) < min_gap
+                       for o in others):
+                    continue
+                gain = _effective_score(
+                    cand, others, coverage_weight, fallback_tau) - current
+                if gain > best_gain:
+                    best_gain, best_swap = gain, (i, cand)
+        if best_swap is None:
+            break
+        i, cand = best_swap
+        out = selected[i]
+        print(f"  Swap: {out.ride_time_secs:.0f}s "
+              f"{(out.label or {}).get('notes', '')[:40]!r} → "
+              f"{cand.ride_time_secs:.0f}s "
+              f"{(cand.label or {}).get('notes', '')[:40]!r} (+{best_gain:.1f})")
+        used.discard(id(out))
+        used.add(id(cand))
+        selected[i] = cand
+    selected.sort(key=lambda s: s.ride_time_secs)
+    return selected
 
 
 def _repair_adjacent_duplicates(
@@ -2656,6 +2808,8 @@ def compose_highlight(
     if precomputed_candidates is not None:
         all_candidates = precomputed_candidates
         print(f"Using {len(all_candidates)} precomputed candidates")
+        if any(c.frame_embeddings is None for c in all_candidates):
+            attach_frame_embeddings(all_candidates, Path(video_dir))
     else:
         all_candidates, _, _ = generate_all_candidates(
             video_dir, fit_path, config, labels_path=labels_path,
