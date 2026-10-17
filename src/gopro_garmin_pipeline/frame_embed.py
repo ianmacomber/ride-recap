@@ -62,15 +62,22 @@ def _ensure_model() -> Path:
     _MODEL_DIR.mkdir(parents=True, exist_ok=True)
     print("  Frame embeddings: downloading DINOv2-small (88 MB, one-time)...")
     with tempfile.NamedTemporaryFile(dir=_MODEL_DIR, delete=False) as tmp:
-        with urllib.request.urlopen(_MODEL_URL, timeout=120) as resp:
-            h = hashlib.sha256()
-            while chunk := resp.read(1 << 20):
-                h.update(chunk)
-                tmp.write(chunk)
+        tmp_path = Path(tmp.name)
+        try:
+            with urllib.request.urlopen(_MODEL_URL, timeout=120) as resp:
+                h = hashlib.sha256()
+                while chunk := resp.read(1 << 20):
+                    h.update(chunk)
+                    tmp.write(chunk)
+        except BaseException:
+            # A dropped connection must not leave a partial model behind.
+            tmp.close()
+            tmp_path.unlink(missing_ok=True)
+            raise
     if h.hexdigest() != _MODEL_SHA256:
-        Path(tmp.name).unlink(missing_ok=True)
+        tmp_path.unlink(missing_ok=True)
         raise RuntimeError("DINOv2 model download failed its SHA-256 check")
-    Path(tmp.name).replace(_MODEL_PATH)
+    tmp_path.replace(_MODEL_PATH)
     return _MODEL_PATH
 
 
@@ -153,6 +160,9 @@ def embed_candidates(video_dir: Path, segments: list) -> dict[int, np.ndarray]:
     if not todo:
         return result
 
+    # Load the model before decoding anything: when it can't be had
+    # (offline, bad checksum) fail before spending 3 ffmpeg decodes per clip.
+    _get_session()
     jobs = [(i, src, seg.anchor_video_secs + off)
             for i, (seg, src, _) in enumerate(todo) for off in _FRAME_OFFSETS]
     with ThreadPoolExecutor(8) as pool:
@@ -171,7 +181,10 @@ def embed_candidates(video_dir: Path, segments: list) -> dict[int, np.ndarray]:
         rows = emb[[k for k, o in enumerate(owners) if o == i]]
         if not len(rows):
             continue
-        path.parent.mkdir(parents=True, exist_ok=True)
-        np.save(path, rows)
         result[id(seg)] = rows
+        # Cache only complete sets: a frame lost to a transient ffmpeg
+        # failure should be retried next run, not frozen in.
+        if len(rows) == len(_FRAME_OFFSETS):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            np.save(path, rows)
     return result

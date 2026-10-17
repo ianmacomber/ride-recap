@@ -2030,7 +2030,9 @@ def _swap_improve(
     time) with the same ``_effective_score`` the greedy uses, and swaps in
     the best unused candidate when it wins by ``_SWAP_MARGIN``. One swap
     per round, the biggest gain first, until nothing clears the margin.
-    Must-include clips are never swapped out.
+    Must-include clips are never swapped out, and no swap may create a
+    back-to-back repeat: the repair that runs next would drop the clip
+    and leave the reel short.
     """
     selected = list(selected)
     used = {id(s) for s in selected}
@@ -2049,7 +2051,8 @@ def _swap_improve(
                     continue
                 gain = _effective_score(
                     cand, others, coverage_weight, fallback_tau) - current
-                if gain > best_gain:
+                if gain > best_gain and not _adds_adjacent_duplicate(
+                        selected, others + [cand]):
                     best_gain, best_swap = gain, (i, cand)
         if best_swap is None:
             break
@@ -2064,6 +2067,22 @@ def _swap_improve(
         selected[i] = cand
     selected.sort(key=lambda s: s.ride_time_secs)
     return selected
+
+
+def _adds_adjacent_duplicate(
+    reel: list["Segment"], trial: list["Segment"],
+) -> bool:
+    """Whether ``trial`` plays any back-to-back repeat ``reel`` doesn't.
+
+    Only new consecutive pairs count, so a pair nothing can fix — two
+    must-includes of one landmark — does not block every swap elsewhere.
+    """
+    def pairs(clips):
+        ordered = sorted(clips, key=lambda s: s.ride_time_secs)
+        return {(id(a), id(b)): (a, b) for a, b in zip(ordered, ordered[1:])}
+    before = pairs(reel)
+    return any(_is_adjacent_duplicate(a, b)
+               for key, (a, b) in pairs(trial).items() if key not in before)
 
 
 def _repair_adjacent_duplicates(

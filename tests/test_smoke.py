@@ -598,3 +598,47 @@ def test_liveness_power_only_excuses_slowness_uphill(monkeypatch):
     monkeypatch.setattr(c, "_window_grade_pct", lambda r, t: 5.0)
     assert c._liveness_penalty(ride, 0.0) == 0.0
     assert flat > 2.5
+
+
+def test_swap_never_creates_back_to_back_repeat():
+    """A stronger clip of the bridge just shown is not a swap; it's a repeat."""
+    from gopro_garmin_pipeline import composer as c
+    a = _vseg("Approaching the George Washington Bridge", _GWB_A, 0.0)
+    weak = _vseg("Quiet stretch of Palisades Parkway", _PAL_A, 1500.0, score=3.0)
+    twin = _vseg("George Washington Bridge deck again", _GWB_A, 400.0, score=9.5)
+    a.label["must_include"] = True   # only the weak pick is swappable
+    out = c._swap_improve([a, weak], [a, weak, twin], 8.0, 0.0, _TAU)
+    assert out == [a, weak]
+
+
+def test_model_download_failure_leaves_no_partial(tmp_path, monkeypatch):
+    import io
+    import pytest
+    from gopro_garmin_pipeline import frame_embed as fe
+
+    class Dropped(io.BytesIO):
+        def read(self, n=-1):
+            if self.tell():
+                raise OSError("connection reset")
+            return super().read(n)
+
+    monkeypatch.setattr(fe, "_MODEL_DIR", tmp_path)
+    monkeypatch.setattr(fe, "_MODEL_PATH", tmp_path / "model.onnx")
+    monkeypatch.setattr(fe.urllib.request, "urlopen",
+                        lambda *a, **k: Dropped(b"x" * (3 << 20)))
+    with pytest.raises(OSError):
+        fe._ensure_model()
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_unavailable_model_fails_before_decoding(tmp_path, monkeypatch):
+    import pytest
+    from gopro_garmin_pipeline import frame_embed as fe
+    (tmp_path / "GX010001.MP4").touch()
+    reads = []
+    monkeypatch.setattr(fe, "_read_frame", lambda src, t: reads.append(t))
+    monkeypatch.setattr(fe, "_get_session",
+                        lambda: (_ for _ in ()).throw(RuntimeError("offline")))
+    with pytest.raises(RuntimeError):
+        fe.embed_candidates(tmp_path, [_seg(100, 20, 200, 0)])
+    assert reads == []
