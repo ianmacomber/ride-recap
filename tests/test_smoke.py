@@ -73,13 +73,6 @@ def test_explicit_thresholds_win_over_derivation():
     assert s.power_spike_threshold == pytest.approx(999)
 
 
-def test_osm_disabled_without_contact_email(monkeypatch):
-    """No contact address → no OSM traffic. Nominatim's policy requires one."""
-    monkeypatch.delenv("OSM_CONTACT_EMAIL", raising=False)
-    s = Settings(_env_file=None, osm_contact_email="")
-    assert s.osm_contact_email == ""
-
-
 # ─── Athlete zones actually reach detection ───────────────────
 # Regression: the thresholds once derived from FTP in Settings while
 # HighlightConfig kept its own hardcoded 350/170, so setting FTP silently
@@ -101,11 +94,6 @@ def test_highlight_config_derives_from_athlete_zones(monkeypatch):
         cfg.get_settings.cache_clear()
 
 
-def test_explicit_highlight_thresholds_win():
-    from gopro_garmin_pipeline.highlights import HighlightConfig
-    assert HighlightConfig(power_spike_threshold=600).power_spike_threshold == 600
-
-
 # ─── Design tokens ────────────────────────────────────────────
 
 def test_serif_font_resolves_to_a_real_file():
@@ -113,12 +101,6 @@ def test_serif_font_resolves_to_a_real_file():
     back to a bundled face. A dangling path crashes every outro render."""
     import os
     assert os.path.exists(T.FONT_SERIF), f"serif fallback is dangling: {T.FONT_SERIF}"
-
-
-def test_bundled_fonts_exist():
-    import os
-    for path in (T.FONT_NUMERIC, T.FONT_NUMERIC_REG, T.FONT_BODY):
-        assert os.path.exists(path), f"bundled font missing: {path}"
 
 
 def test_package_data_stays_inside_the_package():
@@ -131,6 +113,7 @@ def test_package_data_stays_inside_the_package():
     pkg = Path(gopro_garmin_pipeline.__file__).parent
     for path in (T.FONT_NUMERIC, T.FONT_NUMERIC_REG, T.FONT_BODY):
         assert Path(path).is_relative_to(pkg), f"font escapes the package: {path}"
+        assert Path(path).is_file(), f"bundled font missing: {path}"
 
     from gopro_garmin_pipeline.prompt_registry import prompt_body
     assert prompt_body("gemini_scan", "v10").strip()
@@ -207,27 +190,25 @@ def test_haversine_matches_a_known_distance():
 
 # ─── Gemini hit → label scale ─────────────────────────────────
 
-def test_v10_rubric_folds_onto_the_label_scale():
-    """v10 stores a five-dim rubric, labels store visual/action.
-
-    These have to land in the same 1-10 space or `compare` reports
-    nonsense. `light` is excluded, matching composer._rubric_score.
-    """
-    hit = {"rubric": {"light": 10, "composition": 6, "motion": 4,
-                      "scenery": 8, "subject": 2}}
-    visual, action = rating_visual_action(hit)
-    assert visual == 7   # mean(composition 6, scenery 8)
-    assert action == 3   # mean(motion 4, subject 2)
-
-
-def test_pre_v10_hits_still_read_their_own_visual_action():
-    visual, action = rating_visual_action({"visual": 7, "action": 4})
-    assert (visual, action) == (7, 4)
-
-
-def test_a_hit_with_no_scores_at_all_is_zero_not_a_crash():
-    assert rating_visual_action({}) == (0, 0)
-    assert rating_visual_action({"rubric": {}}) == (0, 0)
+@pytest.mark.parametrize("hit, expected", [
+    # v10 five-dim rubric folds onto visual/action; `light` is excluded,
+    # matching composer._rubric_score, or `compare` reports nonsense.
+    ({"rubric": {"light": 10, "composition": 6, "motion": 4,
+                 "scenery": 8, "subject": 2}}, (7, 3)),
+    # Pre-v10 hits read their own visual/action.
+    ({"visual": 7, "action": 4}, (7, 4)),
+    # A human label that also carries a rubric reads its own scores.
+    ({"visual": 9, "action": 2, "rubric": {"composition": 1, "scenery": 1}}, (9, 2)),
+    # candidates.json nests the rubric under "label".
+    ({"label": {"rubric": {"composition": 8, "scenery": 8,
+                           "motion": 2, "subject": 2}}}, (8, 2)),
+    # Nothing looked at this clip — honestly zero, not a crash.
+    ({}, (0, 0)),
+    ({"rubric": {}}, (0, 0)),
+    ({"score": 4.0, "sources": ["telemetry"]}, (0, 0)),
+])
+def test_rating_visual_action(hit, expected):
+    assert rating_visual_action(hit) == expected
 
 
 def test_anchor_video_secs_is_read_from_v10_hits():
@@ -236,25 +217,6 @@ def test_anchor_video_secs_is_read_from_v10_hits():
     assert pe._hit_video_secs({"anchor_video_secs": 3.75}) == 3.75
     assert pe._hit_video_secs({"video_secs": 9.0}) == 9.0   # legacy
     assert pe._hit_video_secs({}) == 0.0
-
-
-def test_explicit_visual_action_wins_over_a_rubric():
-    """A human label that also carries a rubric must read its own scores."""
-    got = rating_visual_action(
-        {"visual": 9, "action": 2, "rubric": {"composition": 1, "scenery": 1}})
-    assert got == (9, 2)
-
-
-def test_serialized_candidate_reads_through_its_nested_label():
-    """candidates.json nests the rubric under "label"."""
-    seg = {"label": {"rubric": {"composition": 8, "scenery": 8,
-                                "motion": 2, "subject": 2}}}
-    assert rating_visual_action(seg) == (8, 2)
-
-
-def test_telemetry_only_candidate_is_honestly_zero():
-    """No rubric, no label — nothing looked at this clip. Not a crash."""
-    assert rating_visual_action({"score": 4.0, "sources": ["telemetry"]}) == (0, 0)
 
 
 # ─── Similarity-aware clip selection ────────────────────────

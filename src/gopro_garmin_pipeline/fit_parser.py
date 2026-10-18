@@ -68,20 +68,6 @@ class RideData:
                 (p.timestamp - epoch).total_seconds() for p in self.points
             ]
 
-    def points_in_range(
-        self, start: dt.datetime, end: dt.datetime
-    ) -> list[RidePoint]:
-        """Return points within a time range (bisect-accelerated)."""
-        if not self.points:
-            return []
-        self._build_index()
-        epoch = self.points[0].timestamp
-        s = (start - epoch).total_seconds()
-        e = (end - epoch).total_seconds()
-        lo = bisect.bisect_left(self._timestamps, s)
-        hi = bisect.bisect_right(self._timestamps, e)
-        return self.points[lo:hi]
-
     def point_at(self, timestamp: dt.datetime) -> RidePoint | None:
         """Return the closest point to a given timestamp (bisect-accelerated)."""
         if not self.points:

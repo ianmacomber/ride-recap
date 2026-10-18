@@ -214,19 +214,6 @@ def _clips_on_timeline(ride_data: dict, clips_data: list[dict], offset: float) -
     return mapped
 
 
-def _find_nearest_frame(frames_index: dict, ride_secs: int) -> str | None:
-    """Find the closest pre-extracted frame file path."""
-    frame_map = frames_index["frames"]
-    if not frame_map:
-        return None
-    keys = sorted(frame_map.keys())
-    best = min(keys, key=lambda k: abs(k - ride_secs))
-    interval = frames_index["interval"]
-    if abs(best - ride_secs) <= interval + 1:
-        return frame_map[best]
-    return None
-
-
 def _find_current_point(points: list[dict], current_secs: float) -> dict | None:
     if not points:
         return None

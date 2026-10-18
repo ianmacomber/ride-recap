@@ -121,7 +121,6 @@ class LayoutGeometry:
     # Fonts (4K-base sizes)
     font_value: int
     font_label: int
-    font_dist: int
     font_dist_sm: int
 
     # Mini-map circle
@@ -157,7 +156,7 @@ class LayoutGeometry:
 
 
 _LANDSCAPE = LayoutGeometry(
-    font_value=240, font_label=48, font_dist=96, font_dist_sm=80,
+    font_value=240, font_label=48, font_dist_sm=80,
     map_diameter_frac=0.12, map_margin_r_frac=0.03, map_margin_t_frac=0.03,
     hud_margin=60, hud_gap=30, hud_bar_gap=10,
     hud_label_gap=4, hud_bar_h=16, hud_bar_w=320,
@@ -168,7 +167,7 @@ _LANDSCAPE = LayoutGeometry(
 )
 
 _PORTRAIT = LayoutGeometry(
-    font_value=130, font_label=28, font_dist=72, font_dist_sm=52,
+    font_value=130, font_label=28, font_dist_sm=52,
     map_diameter_frac=0.24, map_margin_r_frac=0.03, map_margin_t_frac=0.10,
     hud_margin=36, hud_gap=12, hud_bar_gap=6,
     hud_label_gap=2, hud_bar_h=10, hud_bar_w=190,
@@ -328,7 +327,6 @@ class OverlayRenderer:
         # from tokens (Inter).
         self.f_value = ImageFont.truetype(FONT_NUMERIC, _s(g.font_value, self.sc))
         self.f_label = ImageFont.truetype(FONT_BODY, _s(g.font_label, self.sc))
-        self.f_dist = ImageFont.truetype(FONT_NUMERIC, _s(g.font_dist, self.sc))
         self.f_dist_sm = ImageFont.truetype(FONT_NUMERIC_REG, _s(g.font_dist_sm, self.sc))
         # Lockup band font — Inter at a layout-appropriate size.
         lock_size = 38 if layout == "portrait" else 48
@@ -366,11 +364,9 @@ class OverlayRenderer:
                     self.gradients[i] = ((p1.altitude - p0.altitude) / dd) * 100
 
         speeds = [p.speed * _MS_TO_MPH for p in ride.points if p.speed]
-        powers = [p.power for p in ride.points if p.power]
         hrs = [p.heart_rate for p in ride.points if p.heart_rate]
         cadences = [p.cadence for p in ride.points if p.cadence]
         self.max_speed = max(speeds) if speeds else 40
-        self.max_power = max(powers) if powers else 500
         self.max_hr = max(hrs) if hrs else 200
         self.max_cadence = max(cadences) if cadences else 120
 
@@ -721,8 +717,6 @@ class OverlayRenderer:
         _TraceStyle.draw_line(draw, coords, sw, s,
                               outer=g.trace_outer, inner=g.trace_inner)
 
-        self._route_x_center = rx0 + rw // 2
-        self._route_y_bottom = max(c[1] for c in coords) + _s(16, s) if coords else ry1
         return img
 
     def _draw_mint_dot(self, draw, x, y) -> int:

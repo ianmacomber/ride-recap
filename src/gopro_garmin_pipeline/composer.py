@@ -2225,8 +2225,8 @@ def _normalize_selection_input(raw: list[dict]) -> tuple[list[dict], str]:
     A moments.json item is identified by the presence of a `status`
     field. Such items are filtered to {approved, auto} and projected
     to the flat selection dict shape compose_from_selections expects,
-    folding effective_anchor / effective_review_span into anchor_video_
-    secs / video_start / video_end.
+    letting user_anchor_override / user_in_out win over the detector's
+    anchor_video_secs / video_start / video_end.
 
     A selected_candidates.json item is passed through unchanged.
     """

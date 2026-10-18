@@ -180,14 +180,6 @@ def extract_gps_track(video_path: Path) -> list[GpsSample]:
     return samples
 
 
-def first_locked_sample(samples: list[GpsSample], min_fix: int = 2) -> GpsSample | None:
-    """Earliest sample with at least a 2D fix."""
-    for s in samples:
-        if s.fix >= min_fix:
-            return s
-    return None
-
-
 # ─── Offset inference ─────────────────────────────────────────────
 
 @dataclass

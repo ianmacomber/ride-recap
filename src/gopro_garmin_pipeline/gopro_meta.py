@@ -28,11 +28,6 @@ class GoProClip:
         """Convert a position in the video (seconds) to wall-clock time."""
         return self.creation_time + dt.timedelta(seconds=video_secs)
 
-    def wall_time_to_video_time(self, wall_time: dt.datetime) -> float:
-        """Convert wall-clock time to position in video (seconds)."""
-        return (wall_time - self.creation_time).total_seconds()
-
-
 def _run_ffprobe(path: Path) -> dict:
     """Run ffprobe and return parsed JSON output."""
     cmd = [

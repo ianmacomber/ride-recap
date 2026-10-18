@@ -193,42 +193,6 @@ def _extract_region_frames(
     return frames
 
 
-def _extract_regions_parallel(
-    video_path: Path, regions: list[tuple[float, float]],
-    interval: float, width: int, tmpdir: Path,
-) -> list[tuple[float, Path]]:
-    """Extract frames from multiple hot regions.
-
-    Submits all regions to a thread pool but the global _FFMPEG_SEMAPHORE
-    ensures at most _MAX_FFMPEG_JOBS run simultaneously across the entire
-    scan (all clips, all passes).
-    """
-    if not regions:
-        return []
-
-    all_frames: list[tuple[float, Path]] = []
-
-    # Use a generous thread pool — the semaphore does the real throttling
-    workers = min(4, len(regions))
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {
-            pool.submit(
-                _extract_region_frames, video_path, region,
-                interval, width, tmpdir, i,
-            ): i
-            for i, region in enumerate(regions)
-        }
-        for future in as_completed(futures):
-            try:
-                all_frames.extend(future.result())
-            except Exception as e:
-                idx = futures[future]
-                print(f"    Region {idx}: extraction error: {e}")
-
-    all_frames.sort(key=lambda f: f[0])
-    return all_frames
-
-
 # ─── Telemetry context builder ───────────────────────────────
 
 def _build_telemetry_block(

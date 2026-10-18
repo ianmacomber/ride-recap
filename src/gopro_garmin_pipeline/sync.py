@@ -49,15 +49,6 @@ class SyncedClip:
         """Get the FIT data point closest to a position in the video."""
         return self.ride.point_at(self._adjust(video_secs))
 
-    def ride_points_for_video_range(
-        self, start_secs: float, end_secs: float
-    ) -> list[RidePoint]:
-        """Get FIT data points for a range of video time."""
-        return self.ride.points_in_range(
-            self._adjust(start_secs), self._adjust(end_secs),
-        )
-
-
 def auto_sync(
     clip: GoProClip,
     ride: RideData,

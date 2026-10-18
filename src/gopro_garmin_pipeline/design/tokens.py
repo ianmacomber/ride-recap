@@ -2,7 +2,7 @@
 
 Only tokens with a live consumer are exported; tokens.json holds the
 full palette. If a token you need isn't exposed here yet, add it to
-tokens.json first, then re-export (or grab it via all_tokens()). Never
+tokens.json first, then re-export it. Never
 hard-code a hex/font path in a module — it dilutes the system. Tokens
 are cached at import time; restart the process if you edit tokens.json.
 """
@@ -26,10 +26,6 @@ with TOKENS_PATH.open() as _f:
 def hex_to_rgb(h: str) -> Tuple[int, int, int]:
     h = h.lstrip("#")
     return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
-
-
-def hex_to_rgba(h: str, a: int = 255) -> Tuple[int, int, int, int]:
-    return (*hex_to_rgb(h), a)
 
 
 # ─── Colors ───────────────────────────────────────────────────
@@ -102,6 +98,3 @@ def default_lockup() -> str:
     return f"{LOCKUP_ORIGIN}   ·   {LOCKUP_ROAD}"
 
 
-def all_tokens() -> dict:
-    """Raw parsed tokens.json — for debugging or one-off lookups."""
-    return _T

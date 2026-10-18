@@ -87,18 +87,6 @@ class MomentProposal:
         """True if this moment goes into the cut."""
         return self.status in (STATUS_APPROVED, STATUS_AUTO)
 
-    @property
-    def effective_anchor(self) -> float:
-        """User anchor wins if set, else detector anchor."""
-        return self.user_anchor_override if self.user_anchor_override is not None else self.anchor_video_secs
-
-    @property
-    def effective_review_span(self) -> tuple[float, float]:
-        """User in/out wins if set, else detector span."""
-        if self.user_in_out is not None:
-            return self.user_in_out
-        return (self.video_start, self.video_end)
-
     # ── Serialization ───────────────────────────────────
 
     def to_dict(self) -> dict:
@@ -131,17 +119,6 @@ class MomentProposal:
 
 
 # ─── IO ────────────────────────────────────────────────────
-
-def load_proposals(path: Path) -> list[MomentProposal]:
-    """Load a list of proposals from JSON. Empty list if file is missing."""
-    path = Path(path)
-    if not path.exists():
-        return []
-    raw = json.loads(path.read_text())
-    if not isinstance(raw, list):
-        return []
-    return [MomentProposal.from_dict(d) for d in raw]
-
 
 def save_proposals(proposals: list[MomentProposal], path: Path) -> None:
     """Write proposals to a JSON file. Sorted chronologically."""

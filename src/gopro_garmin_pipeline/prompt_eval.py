@@ -423,10 +423,6 @@ def _load_model_hits(
     return _filter_hits_to_local_chapters(all_hits, names)
 
 
-# Thin alias for callers/tests that still use the old name
-_load_gemini_hits = _load_model_hits
-
-
 def _align_moments(
     labels: list[dict],
     model_hits: list[dict],
@@ -970,5 +966,3 @@ def enrich_model_hits_with_ride_time(
             print(f"  Enriched {cache_file.name} with ride_time_secs")
 
 
-# Thin alias for callers that still use the old name
-enrich_gemini_hits_with_ride_time = enrich_model_hits_with_ride_time

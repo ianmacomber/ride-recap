@@ -277,18 +277,6 @@ def train() -> RankerModel | None:
     return ranker
 
 
-def get_learned_score(seg_data: dict) -> float | None:
-    """Score a candidate using the learned model, if available.
-
-    Returns None if no model is trained yet.
-    """
-    model = RankerModel.load()
-    if model is None:
-        return None
-    features = _extract_features(seg_data)
-    return model.predict_score(features)
-
-
 def status() -> str:
     """Return a human-readable status of the learned ranker."""
     X, y, n_rides = load_training_data()

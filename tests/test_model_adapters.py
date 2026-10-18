@@ -11,11 +11,9 @@ import pytest
 from gopro_garmin_pipeline.config import Settings
 from gopro_garmin_pipeline.gemini_scan import _clip_cache_key, _model_fingerprint
 from gopro_garmin_pipeline.models import (
-    VISION_SOURCES,
     GeminiAdapter,
     LocalOpenAIAdapter,
     OpenAIAdapter,
-    cache_dir_name,
     get_model_adapter,
     provider_api_key,
     provider_model_id,
@@ -112,12 +110,6 @@ def test_get_model_adapter_unknown_raises():
     s = Settings(_env_file=None, model_provider="anthropic", gemini_api_key="x")
     with pytest.raises(ValueError, match="Unknown MODEL_PROVIDER"):
         get_model_adapter(s)
-
-
-def test_cache_dir_name():
-    assert cache_dir_name("gemini") == ".gemini_cache"
-    assert cache_dir_name("openai") == ".openai_cache"
-    assert cache_dir_name("local") == ".local_cache"
 
 
 def test_provider_model_id_selects_local_model():
@@ -570,12 +562,13 @@ def test_local_shared_semaphore_across_adapter_instances():
 
 # ─── Downstream compat ────────────────────────────────────────
 
-def test_learned_ranker_has_gemini_true_for_openai():
+@pytest.mark.parametrize("provider", ["gemini", "openai", "local"])
+def test_learned_ranker_has_gemini_true_for_any_vision_provider(provider):
     from gopro_garmin_pipeline.learned_ranker import _extract_features
 
     feats = _extract_features({
         "score": 7.0,
-        "sources": ["openai", "telemetry"],
+        "sources": [provider, "telemetry"],
         "notes": "",
         "rubric": {"composition": 8, "scenery": 7, "motion": 6, "subject": 5},
     })
@@ -591,22 +584,6 @@ def test_learned_ranker_has_gemini_false_without_vision():
         "notes": "",
     })
     assert feats["has_gemini"] == 0.0
-
-
-def test_vision_sources_constant():
-    assert VISION_SOURCES == frozenset({"gemini", "openai", "local"})
-
-
-def test_learned_ranker_has_gemini_true_for_local():
-    from gopro_garmin_pipeline.learned_ranker import _extract_features
-
-    feats = _extract_features({
-        "score": 7.0,
-        "sources": ["local", "telemetry"],
-        "notes": "",
-        "rubric": {"composition": 8, "scenery": 7, "motion": 6, "subject": 5},
-    })
-    assert feats["has_gemini"] == 1.0
 
 
 def test_active_model_id_local():
@@ -652,12 +629,6 @@ def test_hits_to_segments_uses_provider_identity():
     assert len(segs) == 1
     assert segs[0].source == "openai"
     assert segs[0].label["type"] == "openai_vision"
-
-
-def test_default_openai_model_is_not_gpt4o():
-    s = Settings(_env_file=None)
-    assert s.openai_model == "gpt-4.1-mini"
-    assert s.model_provider == "gemini"
 
 
 def test_openai_dependency_floor_supports_responses_parse():

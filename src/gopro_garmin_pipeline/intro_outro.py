@@ -195,21 +195,6 @@ def probe_segment_params(path: Path) -> _SegmentParams:
     )
 
 
-def _value_height(font, text="0123456789") -> int:
-    """Return the rendered glyph height for a representative numeric string."""
-    bbox = font.getbbox(text)
-    return bbox[3] - bbox[1]
-
-
-def _draw_value_label(draw, value, label, f_value, f_label, cx, cy_value,
-                      gap, value_fill, label_fill):
-    """Draw value centered at (cx, cy_value); label centered below the value."""
-    draw.text((cx, cy_value), value, font=f_value, fill=value_fill, anchor="mm")
-    half_h = _value_height(f_value) / 2
-    draw.text((cx, cy_value + half_h + gap), label, font=f_label,
-              fill=label_fill, anchor="mt")
-
-
 def _project_route(route, box_x, box_y, box_w, box_h, pad_x, pad_y):
     if len(route) < 2:
         return []
@@ -237,56 +222,6 @@ def _project_route(route, box_x, box_y, box_w, box_h, pad_x, pad_y):
         )
         for lat, lon in route
     ]
-
-
-def _draw_intro_frame(width: int, height: int, stats: RideStats, alpha: float) -> Image.Image:
-    img = Image.new("RGB", (width, height), (0, 0, 0))
-    draw = ImageDraw.Draw(img, "RGBA")
-    portrait = height > width
-    sc = (width / 1920) if not portrait else (height / 1920)
-
-    a = int(255 * alpha)
-    white = (255, 255, 255, a)
-    dim = (180, 180, 180, a)
-
-    if portrait:
-        f_date = ImageFont.truetype(_FONT_REG, int(46 * sc))
-        f_value = ImageFont.truetype(_FONT_BOLD, int(200 * sc))
-        f_label = ImageFont.truetype(_FONT_BOLD, int(40 * sc))
-    else:
-        f_date = ImageFont.truetype(_FONT_REG, int(40 * sc))
-        f_value = ImageFont.truetype(_FONT_BOLD, int(180 * sc))
-        f_label = ImageFont.truetype(_FONT_BOLD, int(34 * sc))
-
-    if stats.date_str:
-        date_text = "  ".join(stats.date_str)
-        draw.text((width // 2, int(height * (0.10 if portrait else 0.16))),
-                  date_text, font=f_date, fill=dim, anchor="mt")
-
-    rows = [
-        (f"{stats.distance_mi:.2f}", "MILES"),
-        (f"{int(round(stats.elev_gain_ft)):,}", "FEET CLIMBED"),
-        (_format_duration(stats.moving_secs), "MOVING TIME"),
-    ]
-    gap = int(40 * sc)
-
-    if portrait:
-        block_top = int(height * 0.28)
-        block_h = int(height * 0.55)
-        slot = block_h / len(rows)
-        for i, (val, lbl) in enumerate(rows):
-            cy = int(block_top + slot * (i + 0.5))
-            _draw_value_label(draw, val, lbl, f_value, f_label,
-                              width // 2, cy, gap, white, dim)
-    else:
-        col_w = width / len(rows)
-        cy = int(height * 0.52)
-        for i, (val, lbl) in enumerate(rows):
-            cx = int((i + 0.5) * col_w)
-            _draw_value_label(draw, val, lbl, f_value, f_label,
-                              cx, cy, gap, white, dim)
-
-    return img
 
 
 def _draw_outro_frame(
@@ -690,21 +625,6 @@ def _render_card(
             f"{stderr.decode()[-600:]}"
         )
     return output_path
-
-
-def render_intro(
-    output_path: Path,
-    stats: RideStats,
-    params: _SegmentParams,
-    duration_secs: float = 2.5,
-    fade_in: float = 0.4,
-    fade_out: float = 0.4,
-) -> Path:
-    return _render_card(
-        output_path, duration_secs, params,
-        lambda alpha: _draw_intro_frame(params.width, params.height, stats, alpha),
-        fade_in=fade_in, fade_out=fade_out,
-    )
 
 
 def render_outro(
