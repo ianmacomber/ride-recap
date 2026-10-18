@@ -642,3 +642,18 @@ def test_unavailable_model_fails_before_decoding(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError):
         fe.embed_candidates(tmp_path, [_seg(100, 20, 200, 0)])
     assert reads == []
+
+
+def test_swap_does_not_reopen_a_backfilled_hole():
+    """A weak clip alone in an empty stretch stays, however good the
+    alternative next to the climb is."""
+    from gopro_garmin_pipeline import composer as c
+    start = _seg(0, 15, 200, 0, score=6.0)
+    hole_filler = _seg(1500, 18, 150, 0, score=3.0)
+    end = _seg(3000, 30, 50, -5, score=6.0)
+    by_start = _seg(300, 8, 300, 7, score=9.0)
+    start.label = {"must_include": True}
+    end.label = {"must_include": True}
+    out = c._swap_improve([start, hole_filler, end],
+                          [start, hole_filler, end, by_start], 8.0, 0.0, _TAU)
+    assert hole_filler in out

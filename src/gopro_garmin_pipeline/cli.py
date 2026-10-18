@@ -894,7 +894,8 @@ def review_candidates(video_dir: Path, fit_file: Path, labels_file: Path | None,
 @click.option("--no-intro", is_flag=True,
               help="Skip the opening title card entirely.")
 @click.option("--no-overlay", is_flag=True,
-              help="Skip realtime telemetry graphics and the recap outro card.")
+              help="Skip realtime telemetry graphics, the opening title card "
+                   "and the recap outro card.")
 @_grade_options
 @_intro_options
 def compose_selected(selections_file: Path, video_dir: Path, fit_file: Path,
@@ -928,11 +929,16 @@ def compose_selected(selections_file: Path, video_dir: Path, fit_file: Path,
     click.echo(f"Sync: {resolved_offset:+.2f}s  ({source})")
 
     # Prompt for recap-card fields up-front so we don't block partway
-    # through the burn. --flags skip individual prompts.
-    fields = prompt_recap_fields(
-        fit_file, origin=origin, destination=destination,
-        road=road, subtitle=subtitle, crew=crew,
-    )
+    # through the burn. --flags skip individual prompts. A plain render
+    # draws no title or recap card, so there is nothing to ask for.
+    if no_overlay:
+        fields = {"origin": origin, "destination": destination,
+                  "subtitle": subtitle, "road": road, "crew": crew}
+    else:
+        fields = prompt_recap_fields(
+            fit_file, origin=origin, destination=destination,
+            road=road, subtitle=subtitle, crew=crew,
+        )
 
     # Hold the system awake through the burn — same reason as `process`.
     with keep_system_awake() as awake:

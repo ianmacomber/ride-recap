@@ -96,6 +96,10 @@ _FRAME_DUP_PCT = 93.0
 # both directions in time) by at least this many points. The margin keeps
 # the vision model's story choices unless the alternative is clearly better.
 _SWAP_MARGIN = 1.0
+# The swap scores without a coverage term, so on its own it would pull a
+# clip out of a stretch the backfill filled. It may not widen the reel's
+# largest hole by more than this.
+_SWAP_GAP_SLACK_SECS = 120.0
 
 # Coverage term: rewards picks that open up the biggest untouched stretch
 # of the timeline, so a chronological reel still spans the whole ride.
@@ -2030,14 +2034,22 @@ def _swap_improve(
     time) with the same ``_effective_score`` the greedy uses, and swaps in
     the best unused candidate when it wins by ``_SWAP_MARGIN``. One swap
     per round, the biggest gain first, until nothing clears the margin.
-    Must-include clips are never swapped out, and no swap may create a
-    back-to-back repeat: the repair that runs next would drop the clip
-    and leave the reel short.
+    Must-include clips are never swapped out. No swap may create a
+    back-to-back repeat (the repair that runs next would drop the clip
+    and leave the reel short), or widen the reel's largest hole by more
+    than ``_SWAP_GAP_SLACK_SECS`` (undoing the backfill).
     """
     selected = list(selected)
     used = {id(s) for s in selected}
+    span = [c.ride_time_secs for c in candidates]
+    lo, hi = min(span, default=0.0), max(span, default=0.0)
+
+    def widest_hole(reel):
+        ts = [lo, *sorted(s.ride_time_secs for s in reel), hi]
+        return max(b - a for a, b in zip(ts, ts[1:]))
     for _ in range(2 * len(selected)):
         best_gain, best_swap = _SWAP_MARGIN, None
+        hole_cap = widest_hole(selected) + _SWAP_GAP_SLACK_SECS
         for i, seg in enumerate(selected):
             if _is_must_include(seg.label or {}):
                 continue
@@ -2051,9 +2063,14 @@ def _swap_improve(
                     continue
                 gain = _effective_score(
                     cand, others, coverage_weight, fallback_tau) - current
-                if gain > best_gain and not _adds_adjacent_duplicate(
-                        selected, others + [cand]):
-                    best_gain, best_swap = gain, (i, cand)
+                if gain <= best_gain:
+                    continue
+                trial = others + [cand]
+                if widest_hole(trial) > hole_cap:
+                    continue
+                if _adds_adjacent_duplicate(selected, trial):
+                    continue
+                best_gain, best_swap = gain, (i, cand)
         if best_swap is None:
             break
         i, cand = best_swap
@@ -2283,7 +2300,12 @@ def _render_plain_segment(
     from .gopro_meta import extract_metadata
 
     clip = extract_metadata(source)
-    cmd = ["ffmpeg", "-y", "-ss", f"{start_offset:.4f}", "-i", str(source)]
+    cmd = ["ffmpeg", "-y"]
+    # Half a frame past the keyframe boundary, as burn_overlay does, so the
+    # cut doesn't open on a black pre-roll frame.
+    if start_offset > 0:
+        cmd += ["-ss", f"{start_offset + 0.5 / clip.fps:.4f}"]
+    cmd += ["-i", str(source)]
     filters: list[str] = []
     base = "[0:v]"
     if layout == "portrait":
@@ -2501,8 +2523,11 @@ def compose_from_selections(
             active_trim = active_trim + outro_lead_in_secs
 
         # First clip carries the opening blur→title card; its cut is
-        # lengthened (via intro_floor) so the full opener plays.
-        seg_intro = intro_secs if (i == 0 and include_intro) else 0.0
+        # lengthened (via intro_floor) so the full opener plays. The card
+        # is drawn by the overlay burn, so a plain render has none to make
+        # room for.
+        seg_intro = (intro_secs if (i == 0 and include_intro and include_overlay)
+                     else 0.0)
 
         # Pick the cut window:
         #   active_trim > 0: tight cut centered on anchor_video_secs (or
@@ -2827,7 +2852,7 @@ def compose_highlight(
     if precomputed_candidates is not None:
         all_candidates = precomputed_candidates
         print(f"Using {len(all_candidates)} precomputed candidates")
-        if any(c.frame_embeddings is None for c in all_candidates):
+        if all(c.frame_sim_scale is None for c in all_candidates):
             attach_frame_embeddings(all_candidates, Path(video_dir))
     else:
         all_candidates, _, _ = generate_all_candidates(
