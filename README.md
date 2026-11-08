@@ -28,6 +28,10 @@ Here's my long write-up of how it works and everything I got wrong building it: 
 
 ## The Architecture
 
+**▶ The 60-second version:**
+
+[![Ride Recap: how the pipeline works, in 60 seconds](https://img.youtube.com/vi/5s5COq5OA5s/maxresdefault.jpg)](https://www.youtube.com/watch?v=5s5COq5OA5s)
+
 ![Pipeline architecture](assets/images/architecture.jpg)
 
 We identify compelling moments from four separate sources:
