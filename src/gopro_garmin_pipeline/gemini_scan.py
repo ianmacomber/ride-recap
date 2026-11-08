@@ -73,6 +73,9 @@ _MAX_WORKERS = 4        # concurrent Gemini API calls
 
 _PROMPT_VERSION = "v10"
 _CACHE_VERSION = _PROMPT_VERSION  # cache key tracks prompt version
+# Gemini keys carry no model fingerprint, so a Gemini model change bumps
+# this suffix instead (b: gemini-3.8-flash at low media resolution).
+_GEMINI_CACHE_SUFFIX = "b"
 _SYSTEM_INSTRUCTION = prompt_body("gemini_scan", _PROMPT_VERSION)
 
 # Coarse pass still uses the v5 frame-rating prompt for region detection
@@ -490,7 +493,8 @@ def _clip_cache_key(
     include ``_m{model_fp}`` so changing OPENAI_MODEL cannot reuse ratings.
     """
     stem = Path(clip_name).stem
-    parts = [stem, _CACHE_VERSION]
+    version = _CACHE_VERSION + (_GEMINI_CACHE_SUFFIX if provider == "gemini" else "")
+    parts = [stem, version]
     if provider != "gemini" and model_id:
         parts.append(f"m{_model_fingerprint(model_id)}")
     fp = _label_fingerprint(forced_fine_times)

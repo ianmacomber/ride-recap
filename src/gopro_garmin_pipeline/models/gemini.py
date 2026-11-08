@@ -5,6 +5,13 @@ from __future__ import annotations
 from ..utils import parse_json_response
 from .base import _REQUEST_TIMEOUT_S
 
+# Gemini 3 bills an image at 1120 tokens by default. Scan frames are only
+# 480 px wide, so LOW (280 tokens) loses no detail at a quarter of the cost.
+_MEDIA_RESOLUTION = "MEDIA_RESOLUTION_LOW"
+# Thinking counts against max_output_tokens, so the narrative call gets
+# headroom over the short index list it returns.
+_THINKING_HEADROOM = 3072
+
 
 def _afc_disabled(types):
     """Build a GenerateContentConfig kwarg set that disables automatic function calling."""
@@ -39,6 +46,7 @@ class GeminiAdapter:
             contents=[types.Content(parts=parts)],
             config=types.GenerateContentConfig(
                 system_instruction=system,
+                media_resolution=_MEDIA_RESOLUTION,
                 http_options=types.HttpOptions(
                     timeout=int(_REQUEST_TIMEOUT_S * 1000),
                 ),
@@ -64,6 +72,7 @@ class GeminiAdapter:
             contents=[types.Content(parts=parts)],
             config=types.GenerateContentConfig(
                 system_instruction=system,
+                media_resolution=_MEDIA_RESOLUTION,
                 http_options=types.HttpOptions(
                     timeout=int(_REQUEST_TIMEOUT_S * 1000),
                 ),
@@ -88,18 +97,19 @@ class GeminiAdapter:
     ) -> dict | list:
         from google.genai import types
 
-        config_kwargs: dict = {
-            "temperature": temperature,
-            "max_output_tokens": max_output_tokens,
-            **_afc_disabled(types),
-        }
+        # Gemini 3 deprecated temperature and replaced thinking_budget with
+        # thinking_level, so ``temperature`` is accepted for the shared
+        # interface and not sent.
+        config_kwargs: dict = {**_afc_disabled(types)}
         if system:
-            # prompt_eval path — system instruction, no thinking budget
+            # prompt_eval path — system instruction, default thinking. No
+            # output cap: thinking spends from it and the eval reply is long.
             config_kwargs["system_instruction"] = system
         else:
-            # narrative_select path — thinking budget, no system instruction
+            # narrative_select path — low thinking, no system instruction
+            config_kwargs["max_output_tokens"] = max_output_tokens + _THINKING_HEADROOM
             config_kwargs["thinking_config"] = types.ThinkingConfig(
-                thinking_budget=256,
+                thinking_level=types.ThinkingLevel.LOW,
             )
 
         response = self._client.models.generate_content(

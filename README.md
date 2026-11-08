@@ -10,7 +10,7 @@
 
 I ride most weekends, usually out of Manhattan and up 9W. By the end of a ride I have hours of GoPro footage and one `.fit` file with per-second speed, power, heart rate, cadence, and GPS. Absolutely no one wants to watch 3 hours of being stuck behind Citibikes on West Side Highway. It's fun to look through past footage, identify the fun parts, and put together a narrative to remember. But since cycling is already time consuming, manually editing a highlight reel edit per ride is a nonstarter. So I built and open-sourced this repo.
 
-One command, about ten minutes, roughly four cents of `gemini-3.5-flash`:
+One command, about ten minutes, on `gemini-3.8-flash`:
 
 ```bash
 ride-recap process data/raw/2026-07-10/

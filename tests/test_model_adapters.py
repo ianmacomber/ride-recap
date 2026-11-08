@@ -49,14 +49,14 @@ def test_provider_api_key_selects_by_model_provider():
 
 
 def test_get_model_adapter_gemini():
-    s = Settings(_env_file=None, model_provider="gemini", gemini_api_key="gk", gemini_model="gemini-3.5-flash")
+    s = Settings(_env_file=None, model_provider="gemini", gemini_api_key="gk", gemini_model="gemini-3.8-flash")
     with patch("gopro_garmin_pipeline.models.gemini.genai", create=True):
         # GeminiAdapter imports google.genai inside __init__
         with patch("google.genai.Client") as Client:
             Client.return_value = MagicMock()
             adapter = get_model_adapter(s)
     assert adapter.name == "gemini"
-    assert adapter.model_id == "gemini-3.5-flash"
+    assert adapter.model_id == "gemini-3.8-flash"
 
 
 def test_get_model_adapter_openai():
@@ -116,7 +116,7 @@ def test_provider_model_id_selects_local_model():
     settings = Settings(
         _env_file=None,
         model_provider="local",
-        gemini_model="gemini-3.5-flash",
+        gemini_model="gemini-3.8-flash",
         local_model="mlx-community/Qwen3-VL-8B-Instruct-3bit",
     )
     assert provider_model_id(settings) == "mlx-community/Qwen3-VL-8B-Instruct-3bit"
@@ -138,13 +138,13 @@ def test_cli_exposes_skip_vision_with_legacy_alias():
 # ─── Cache keys ───────────────────────────────────────────────
 
 def test_gemini_cache_key_legacy_shape():
-    assert _clip_cache_key("GX010346.MP4", provider="gemini", model_id="gemini-3.5-flash") == (
-        "GX010346_v10.json"
+    assert _clip_cache_key("GX010346.MP4", provider="gemini", model_id="gemini-3.8-flash") == (
+        "GX010346_v10b.json"
     )
     assert _clip_cache_key(
         "GX010346.MP4", [12.3, 45.6], provider="gemini", model_id="m",
-    ).startswith("GX010346_v10_l")
-    assert "_m" not in _clip_cache_key("GX010346.MP4", provider="gemini", model_id="gemini-3.5-flash")
+    ).startswith("GX010346_v10b_l")
+    assert "_m" not in _clip_cache_key("GX010346.MP4", provider="gemini", model_id="gemini-3.8-flash")
 
 
 def test_openai_cache_key_includes_model_fingerprint():
@@ -379,7 +379,7 @@ def test_openai_complete_json_eval_uses_structured_schema():
 
 def test_gemini_score_frames_parses_list():
     adapter = object.__new__(GeminiAdapter)
-    adapter.model_id = "gemini-3.5-flash"
+    adapter.model_id = "gemini-3.8-flash"
     client = MagicMock()
     client.models.generate_content.return_value = MagicMock(
         text='[{"frame_index": 1, "visual": 4, "action": 2}]',
@@ -388,6 +388,32 @@ def test_gemini_score_frames_parses_list():
 
     out = adapter.score_frames(images=[b"x"], system="sys", user="user")
     assert out[0]["frame_index"] == 1
+    config = client.models.generate_content.call_args.kwargs["config"]
+    assert config.media_resolution == "MEDIA_RESOLUTION_LOW"
+
+
+def test_gemini_complete_json_uses_gemini3_thinking_config():
+    from google.genai import types
+
+    adapter = object.__new__(GeminiAdapter)
+    adapter.model_id = "gemini-3.8-flash"
+    client = MagicMock()
+    client.models.generate_content.return_value = MagicMock(text="[0, 5, 3]")
+    adapter._client = client
+
+    assert adapter.complete_json(prompt="pick clips", temperature=0.3) == [0, 5, 3]
+    config = client.models.generate_content.call_args.kwargs["config"]
+    assert config.temperature is None
+    assert config.thinking_config.thinking_level == types.ThinkingLevel.LOW
+    assert config.thinking_config.thinking_budget is None
+    assert config.max_output_tokens == 1024 + 3072
+
+    client.models.generate_content.return_value = MagicMock(text='{"analysis": "ok"}')
+    adapter.complete_json(prompt="eval", system="you are an expert", max_output_tokens=2048)
+    config = client.models.generate_content.call_args.kwargs["config"]
+    assert config.system_instruction == "you are an expert"
+    assert config.temperature is None
+    assert config.max_output_tokens is None
 
 
 # ─── Local OpenAI-compatible adapter ──────────────────────────
@@ -836,7 +862,7 @@ def test_compare_without_mp4_uses_labeled_chapter_tier(tmp_path, monkeypatch):
     }]))
 
     monkeypatch.setenv("MODEL_PROVIDER", "gemini")
-    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.5-flash")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.8-flash")
     cfg.get_settings.cache_clear()
     try:
         report = compare_ride(tmp_path)
@@ -950,7 +976,7 @@ def test_scoped_report_takes_precedence_over_legacy(tmp_path, monkeypatch):
     scoped = {
         "summary": {
             "provider": "gemini",
-            "model": "gemini-3.5-flash",
+            "model": "gemini-3.8-flash",
             "n_labels": 1,
             "n_model_hits": 1,
             "n_matched": 1,
@@ -975,13 +1001,13 @@ def test_scoped_report_takes_precedence_over_legacy(tmp_path, monkeypatch):
         "matched": [],
         "patterns": {},
     }
-    (tmp_path / _report_filename("gemini", "gemini-3.5-flash")).write_text(
+    (tmp_path / _report_filename("gemini", "gemini-3.8-flash")).write_text(
         json.dumps(scoped),
     )
     (tmp_path / "prompt_eval.json").write_text(json.dumps(legacy))
 
     monkeypatch.setenv("MODEL_PROVIDER", "gemini")
-    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.5-flash")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.8-flash")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     cfg.get_settings.cache_clear()
     try:
@@ -1039,7 +1065,7 @@ def test_gemini_falls_back_to_legacy_prompt_eval(tmp_path, monkeypatch):
     }))
 
     monkeypatch.setenv("MODEL_PROVIDER", "gemini")
-    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.5-flash")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.8-flash")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     cfg.get_settings.cache_clear()
     try:
@@ -1080,7 +1106,7 @@ def test_legacy_report_rejects_mismatching_model(tmp_path, monkeypatch):
     }))
 
     monkeypatch.setenv("MODEL_PROVIDER", "gemini")
-    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.5-flash")
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-3.8-flash")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
     cfg.get_settings.cache_clear()
     try:

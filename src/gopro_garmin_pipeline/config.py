@@ -43,7 +43,8 @@ class Settings(BaseSettings):
 
     # --- Gemini ---
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-3.5-flash"
+    # gemini-3.5-flash was deprecated 2026-10-08; 3.8 is the current stable Flash.
+    gemini_model: str = "gemini-3.8-flash"
 
     # --- OpenAI ---
     openai_api_key: str = ""
